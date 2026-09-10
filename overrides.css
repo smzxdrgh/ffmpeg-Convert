@@ -1,0 +1,100 @@
+.settings-heading{border-left:2px solid var(--lime);padding-left:10px;margin-top:22px;font-size:12px}
+.settings-heading small{display:block;color:var(--muted);font-size:10px;margin-top:4px;line-height:1.4}
+.hidden-setting{display:none}
+.panel select{width:100%;background:#121619;color:var(--text);border:1px solid var(--line);border-radius:3px;padding:10px 11px;outline:none}
+.probe-line{display:flex;align-items:center;gap:7px;margin-top:5px}.probe-line small{display:inline!important;font:10px 'DM Mono'!important;color:var(--muted)}.probe-badge{display:inline-block;padding:3px 5px;border:1px solid #53616a;border-radius:2px;color:#aeb8bb;font:9px 'DM Mono'}.probe-badge.animated{border-color:#8b6540;color:var(--orange)}.probe-badge.probing{border-color:#536b43;color:var(--lime)}.probe-badge.error-badge{border-color:#814d42;color:var(--orange)}
+label:has(#jpg-progressive){display:none}
+.file-list.over{border-color:var(--lime);background:#263025}
+.size-policy{margin-top:18px;padding:14px 12px;background:#121619;border:1px solid var(--line)}.size-policy label{margin-top:8px}.size-policy label:first-child{margin-top:0}.size-policy p{font-size:10px;line-height:1.5;margin:10px 0 0;color:var(--muted)}.size-policy p strong{color:var(--lime);font-weight:500}.policy-note{display:block;margin:7px 0 0 24px;color:#68747a;font:10px 'DM Mono';line-height:1.4}.danger-check{color:#e0a18d!important}
+.filename-template{margin-top:8px}.filename-help{margin-left:0;margin-top:6px}
+.queue-total{min-width:130px;margin-left:auto;margin-right:18px}.queue-total>span{display:block;text-align:right;color:var(--muted);font:10px 'DM Mono';margin-bottom:5px}.queue-bar{height:4px;background:#2b3236;border-radius:4px;overflow:hidden}.queue-bar i{display:block;width:0;height:100%;background:var(--lime);transition:width .25s ease}.process-status{display:inline-block;margin-left:7px;font:10px 'DM Mono'}.process-status.pending{color:#667176}.process-status.active{color:var(--blue)}.process-status.success{color:var(--lime)}.process-status.rejected{color:var(--orange)}
+.acceleration-panel{padding:18px 20px}.acceleration-panel .panel-title{margin-bottom:14px}.acceleration-note{margin-left:0}.engine-panel{margin-bottom:22px}.engine-path-row{display:flex;gap:8px}.engine-path-row input{flex:1;font:11px 'DM Mono'}.engine-path-row .primary,.engine-path-row .outline{white-space:nowrap}.engine-note{margin-left:0}.valid-pill{color:var(--lime)!important;border-color:#5a6d30!important}
+.custom-cores{margin-top:8px}.custom-cores:disabled{opacity:.45}.acceleration-panel select,.acceleration-panel input{width:100%;background:#121619;color:var(--text);border:1px solid var(--line);border-radius:3px;padding:10px 11px;outline:none}
+/* ---- 设置动作按钮（convert 面板右上角） ---- */
+.settings-actions{display:flex;gap:6px}.settings-actions .text-button{font:10px 'DM Mono';padding:4px 6px;border:1px solid var(--line);border-radius:3px}.settings-actions .text-button:hover{border-color:var(--lime);color:var(--lime)}
+/* ---- 能力扫描交互 ---- */
+.cap-tabs{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}.cap-tab{background:#22282d;border:1px solid transparent;padding:9px 14px;font:11px 'DM Mono';color:var(--muted);border-radius:3px}.cap-tab.active{border-color:var(--lime);color:var(--lime)}.cap-search{width:100%;margin-top:12px;background:#121619;color:var(--text);border:1px solid var(--line);border-radius:3px;padding:10px 12px;outline:none}.cap-line{display:block;cursor:pointer;border-radius:2px;padding:1px 4px}.cap-line:hover{background:#22282d;color:var(--lime)}
+/* ---- 滤镜工作台 ---- */
+.filter-grid{grid-template-columns:1.2fr 1fr}.filter-search{margin-bottom:12px;background:#121619;color:var(--text);border:1px solid var(--line);border-radius:3px;padding:10px 12px;outline:none}.filter-list{max-height:430px;overflow:auto;border-top:1px solid var(--line)}.filter-item{display:flex;align-items:baseline;gap:10px;padding:11px 8px;border-bottom:1px solid #272d31;cursor:pointer}.filter-item strong{font:12px 'DM Mono';color:var(--blue);min-width:86px}.filter-item small{color:var(--muted);font-size:11px}.filter-item:hover{background:#20262a}.filter-item.selected{background:#263025}.filter-item.selected strong{color:var(--lime)}.filter-config{min-height:90px}.filter-config .muted{margin-top:0}.filter-config select{width:100%;background:#121619;color:var(--text);border:1px solid var(--line);border-radius:3px;padding:10px 11px;outline:none}
+/* ---- 偏好设置 ---- */
+.settings-actions-row{display:flex;gap:10px;margin-top:16px}.engine-path-row select{flex:1;background:#121619;color:var(--text);border:1px solid var(--line);border-radius:3px;padding:10px 11px;outline:none}
+/* ---- 无损 / 有损模式切换 ---- */
+.mode-row{display:flex;gap:8px;margin-top:2px}.mode-btn{flex:1;padding:9px 10px;background:#22282d;border:1px solid transparent;border-radius:3px;font:12px 'DM Mono';color:var(--muted);text-align:center}.mode-btn.selected{border-color:var(--lime);color:var(--lime)}.mode-row + .pill{display:inline-block;margin-left:8px}
+/* ---- 质量刻度（100/75/50/25/0 各档对应专有参数） ---- */
+.quality-ticks{display:flex;justify-content:space-between;margin:2px 0 14px;padding:0 2px}.quality-ticks span{display:flex;flex-direction:column;align-items:center;gap:2px}.quality-ticks i{font:10px 'DM Mono';color:var(--muted);font-style:normal}.quality-ticks b{font:10px 'DM Mono';color:#9aa7b0;font-weight:400}
+/* ---- 对应质量百分比展示条（纯展示） ---- */
+.percent-track{height:8px;background:#22282d;border-radius:99px;overflow:hidden;margin:4px 0 10px}.percent-fill{height:100%;background:linear-gradient(90deg,#6f9331,#c9e06a);border-radius:99px;transition:width .15s ease}
+/* ---- 媒体互转动态质量容器 ---- */
+#media-anim-quality-wrap .mode-row{margin-bottom:10px}
+/* ---- 文件过滤条（默认全部接收） ---- */
+.filter-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;background:#0e1114;border:1px solid var(--line);border-bottom:none;border-radius:3px 3px 0 0}.filter-title{font:10px 'DM Mono';letter-spacing:.08em;color:var(--muted);margin-right:4px;white-space:nowrap}.filter-chip{margin:0 !important;font:11px 'DM Mono';color:#9aa7b0;white-space:nowrap}.filter-chip input{accent-color:var(--lime)}.filter-hint{margin-left:auto;font-size:10px;color:#56636b}
+/* ---- 完整性检查 ---- */
+button.danger{background:transparent;border:1px solid #7a2f2f;color:#e07a7a;padding:10px 16px;border-radius:3px;font:12px 'DM Mono';cursor:pointer;transition:background .15s}.danger:hover{background:#2a1618}.file-type.danger{color:#e07a7a}.probe-badge.error-badge{background:#3a1212;color:#e07a7a}
+/* ---- 完整性分批检查 ---- */
+.batch-row{align-items:center;flex-wrap:wrap;gap:10px;margin:10px 0 4px}.batch-toggle{display:flex;align-items:center;gap:6px;font:12px 'DM Mono';color:var(--text);cursor:pointer;white-space:nowrap}.batch-toggle input{accent-color:var(--lime)}.batch-size{display:flex;align-items:center;gap:6px;font:12px 'DM Mono';color:var(--muted)}.batch-size input{width:56px;background:#121619;color:var(--text);border:1px solid var(--line);border-radius:3px;padding:4px 6px;font:12px 'DM Mono';outline:none}.batch-size input:focus{border-color:var(--lime)}.batch-hint{flex-basis:100%;font-size:10px;color:#56636b}
+
+/* ---- 侧边栏收起 / 展开 ---- */
+.sidebar{position:relative}.sidebar-toggle{position:absolute;top:22px;right:12px;width:26px;height:26px;background:var(--surface2);border:1px solid var(--line);border-radius:4px;color:var(--muted);font-size:11px;display:grid;place-items:center;z-index:5;line-height:1;padding:0}.sidebar-toggle:hover{color:var(--lime);border-color:var(--lime)}
+body.sidebar-collapsed .sidebar{width:64px;flex:0 0 64px;padding:20px 0;align-items:center}
+body.sidebar-collapsed .brand{display:none}
+body.sidebar-collapsed .sidebar-toggle{position:static;top:auto;right:auto;margin:0 auto 24px}
+body.sidebar-collapsed .side-label{display:none}
+body.sidebar-collapsed .nav{width:64px;justify-content:center;gap:0;padding:13px 0}
+body.sidebar-collapsed .nav span,body.sidebar-collapsed .nav em{display:none}
+body.sidebar-collapsed .sidebar-foot{padding:15px 0;text-align:center;border-top:1px solid var(--line)}
+body.sidebar-collapsed .sidebar-foot #engine-status,body.sidebar-collapsed .sidebar-foot small{display:none}
+body.sidebar-collapsed footer{left:64px}
+/* 内容滚动与底部遮挡防护 */
+html,body{overflow-x:hidden}
+main{overflow:visible}
+footer{z-index:10}
+
+/* ---- 开始 / 停止 / 继续 双按钮 ---- */
+.run-row{display:flex;gap:10px;margin-top:18px}.run-row .run-button{margin-top:0;flex:1}.run-button.run-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--line)}.run-button.run-secondary:hover{border-color:var(--lime);color:var(--lime)}
+
+/* ---- 损坏文件修复按钮 ---- */
+.file-row{flex-wrap:wrap;align-items:flex-start}.file-row-actions{display:flex;gap:6px;align-items:center;flex-shrink:0;margin-left:auto}.repair-btn{background:var(--surface2);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;white-space:nowrap}.repair-btn:hover{border-color:var(--lime);color:var(--lime)}.repair-btn.confirming{background:#3a2f00;border-color:#d4a017;color:#d4a017}.repair-btn.repaired{border-color:var(--lime);color:var(--lime);background:rgba(190,242,100,.08)}.repair-btn:disabled{opacity:.6;cursor:wait}
+
+/* ---- 速度滑块提示 ---- */
+.speed-hint{display:block;margin-top:6px;color:var(--muted);font-size:11px;line-height:1.5;opacity:.85}
+
+/* ---- AVIF 感知质量参考条（LPIPS 实测） ---- */
+.perceptual-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:8px;font-size:10px;font-weight:600;background:rgba(180,230,120,.15);color:#b4e678;vertical-align:middle}
+.perceptual-guide{margin-top:10px;padding:10px 12px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.pg-title{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:.3px}
+.pg-levels{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.pg-level{display:flex;flex-direction:column;align-items:center;padding:3px 8px;border-radius:6px;background:rgba(180,230,120,.08);min-width:52px}
+.pg-level i{font-style:normal;font-size:10px;color:var(--muted)}
+.pg-level b{font-size:11px;color:#b4e678;font-weight:600}
+.pg-note{display:block;font-size:10.5px;color:var(--muted);line-height:1.5;opacity:.85}
+
+/* ---- 文件夹流式批处理 ---- */
+.fb-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.fb-stat{display:flex;flex-direction:column;align-items:center;padding:10px 6px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.fb-stat span{font-size:11px;color:var(--muted);margin-bottom:4px}
+.fb-stat b{font-size:20px;font-weight:700;color:var(--text)}
+.progress-bar-wrap{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.progress-bar{flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+.progress-bar i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#7ae08a,#b4e678);border-radius:4px;transition:width .3s ease}
+#fb-progress-text{font-size:13px;font-weight:600;min-width:42px;text-align:right}
+.fb-log{font-size:12px;color:var(--muted);line-height:1.6;min-height:48px;max-height:120px;overflow-y:auto;padding:8px;background:rgba(0,0,0,.2);border-radius:6px;white-space:pre-wrap;word-break:break-all}
+@media(max-width:720px){.fb-stats{grid-template-columns:repeat(2,1fr)}}
+
+/* ---- 文件夹批处理：文件夹列表 ---- */
+.fb-folder-list{max-height:180px;overflow-y:auto;margin:8px 0;border-radius:8px;background:rgba(0,0,0,.15)}
+.fb-folder-list.empty{background:transparent}
+.fb-folder-item{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.fb-folder-item:last-child{border-bottom:none}
+.fb-folder-item .file-info{flex:1;min-width:0}
+.fb-folder-item .file-info strong{font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fb-folder-item .file-info small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.fb-batch-preview{max-height:240px;overflow-y:auto}
+.fb-batch-preview.empty{background:transparent}
+
+/* ---- 文件夹批处理过滤栏修复：选项格不遮挡字体 ---- */
+#fb-filter-bar.filter-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px}
+#fb-filter-bar .filter-title{font-weight:600;margin-right:4px;flex-shrink:0}
+#fb-filter-bar .filter-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;margin:0;white-space:nowrap;border-radius:6px;background:rgba(255,255,255,.06);cursor:pointer;transition:background .15s}
+#fb-filter-bar .filter-chip:hover{background:rgba(255,255,255,.12)}
+#fb-filter-bar .filter-chip input[type="checkbox"]{width:14px;height:14px;margin:0;flex-shrink:0;accent-color:#c8f542}
+#fb-filter-bar .filter-hint{width:100%;margin-top:4px;color:var(--muted)}

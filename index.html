@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>FFMPEG 工作台</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="overrides.css"></head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-toggle" id="sidebar-toggle" title="收起 / 展开侧边栏">◀</button>
+    <div class="brand"><div class="brand-mark">F</div><div class="brand-text"><strong>FFMPEG</strong><span>WORKBENCH</span></div></div>
+    <div class="side-label">工作流</div>
+    <button class="nav active" data-view="convert"><i>↗</i><span>图片转换</span> <em>01</em></button>
+    <button class="nav" data-view="gif"><i>✦</i><span>动图工坊</span> <em>02</em></button>
+    <button class="nav" data-view="media"><i>⇄</i><span>媒体互转</span> <em>03</em></button>
+    <button class="nav" data-view="audio"><i>♫</i><span>音频转换</span> <em>04</em></button>
+    <button class="nav" data-view="filter"><i>◐</i><span>滤镜工作台</span> <em>05</em></button>
+    <button class="nav" data-view="advanced"><i>⌘</i><span>高级命令</span> <em>06</em></button>
+    <div class="side-label">工具</div>
+    <button class="nav" data-view="capabilities"><i>◈</i><span>能力扫描</span> <em>07</em></button>
+    <button class="nav" data-view="integrity"><i>✚</i><span>完整性检查</span> <em>08</em></button>
+    <button class="nav" data-view="settings"><i>⚙</i><span>偏好设置</span> <em>09</em></button>
+    <button class="nav" data-view="folder-batch"><i>▤</i><span>文件夹批处理</span> <em>10</em></button>
+    <div class="sidebar-foot"><span class="dot"></span><span id="engine-status">正在检测引擎</span><small id="engine-path">FFMPEG_HOME</small></div>
+  </aside>
+  <main>
+    <header><div><div class="eyebrow">LOCAL MEDIA PIPELINE / WINDOWS</div><h1 id="page-title">图片转换</h1><p id="page-subtitle">批量处理图片，保持画质，也保持节奏。</p></div><button class="icon-button" id="about-btn">?</button></header>
+
+    <!-- 01 图片转换 -->
+    <section id="view-convert" class="view active-view">
+      <div class="workspace-grid">
+        <div class="column">
+          <div class="dropzone" id="dropzone"><div class="drop-icon">＋</div><h2>拖入文件开始</h2><p>支持 PNG、JPG、WEBP、BMP、TIFF、AVIF、JPEG-XL 与 GIF</p><button class="primary" id="add-files">选择文件 <span>⌘ K</span></button><button class="outline" id="import-fb-convert" style="margin-left:8px">从文件夹批处理导入</button><button class="outline" id="auto-import-convert" style="margin-left:8px">持续自动导入处理</button><button class="danger" id="auto-import-stop-convert" style="margin-left:8px;display:none">停止自动导入</button></div>
+          <div class="filter-bar" id="image-filter-bar"></div>
+          <div class="section-head"><div><span class="eyebrow">01 / INPUT QUEUE</span><h3>处理队列 <b id="file-count">0</b></h3></div><div class="queue-total"><span id="progress-count">0/0</span><div class="queue-bar"><i id="progress-fill"></i></div></div><button class="text-button" id="clear-files">清空</button></div>
+          <div id="file-list" class="file-list empty"><div class="empty-state">还没有文件<br><small>单次可添加多个文件，自动批量处理</small></div></div>
+        </div>
+        <div class="column panel-column">
+          <div class="panel"><div class="panel-title"><span class="eyebrow">02 / OUTPUT PROFILE</span><span class="pill">8 FORMATS</span></div><label>输出格式</label><div class="format-grid" id="format-grid"><button data-format="webp" class="selected">WEBP<small>图片 / 动图</small></button><button data-format="png">PNG<small>无损 / 透明</small></button><button data-format="jpg">JPG<small>照片 / 兼容</small></button><button data-format="avif">AVIF<small>高压缩 / HDR</small></button><button data-format="gif">GIF<small>调色板 / 动图</small></button><button data-format="bmp">BMP<small>位图 / 无损</small></button><button data-format="tiff">TIFF<small>无损 / 印刷</small></button><button data-format="jpegxl">JPEG-XL<small>下一代 / 无损</small></button></div><div id="format-settings"></div><label>尺寸调整</label><div class="inline-fields"><input id="width" placeholder="宽度 px"><span>×</span><input id="height" placeholder="高度 px"></div><label class="check"><input id="keep-ratio" type="checkbox" checked> 保持宽高比</label></div>
+          <div class="panel compact"><div class="panel-title"><span class="eyebrow">03 / DESTINATION</span><span class="settings-actions"><button class="text-button" id="save-defaults" title="把当前所有转换设置保存为默认值，下次启动自动套用">保存为默认</button><button class="text-button" id="reset-defaults" title="恢复全部转换设置为默认值">恢复默认</button></span></div><div class="destination"><div><strong id="output-dir">与源文件相同目录</strong><small>默认使用源文件所在文件夹</small></div><button class="outline" id="choose-dir">选择文件夹</button></div><label>输出文件名</label><select id="filename-mode"><option value="original">使用原文件名</option><option value="custom">自定义文件名模板</option></select><input id="filename-template" class="filename-template" value="{name}" placeholder="例如：compressed_{name}_{index}" disabled><small class="policy-note filename-help">自定义模板支持：{name} 原文件名、{index} 批量序号。扩展名会根据输出格式自动添加。</small><div class="size-policy"><label class="check"><input id="size-gate" type="checkbox" checked> 仅保留达到压缩目标的输出</label><label>目标缩小比例 <output id="size-target-output">20%</output></label><input id="size-target" type="range" min="0" max="90" value="20"><div class="range-labels"><span>只需不变大</span><span>至少缩小 90%</span></div><p>输出必须不大于原文件的 <strong id="size-limit-label">80%</strong>；输出变大时始终自动丢弃。</p><label class="check danger-check"><input id="delete-original" type="checkbox"> 输出通过后删除原文件</label><small class="policy-note">仅在输出文件被保留且达到上方门槛时删除，失败或变大时原文件不会删除。</small></div><div class="mode-row batch-row"><label class="batch-toggle"><input type="checkbox" id="convert-batch"> 分批处理</label><label class="batch-size">每批 <input type="number" id="convert-batch-size" value="5" min="1" max="100"> 个</label><small class="batch-hint">开启后按固定数量分批依次处理，降低大文件夹时窗口压力；关闭时按原有逻辑处理。</small></div><div class="run-row"><button class="run-button" id="run-convert">开始批量转换 <span>→</span></button><button class="run-button run-secondary" id="resume-convert" style="display:none">继续 <span>↷</span></button></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 动图工坊 -->
+    <section id="view-gif" class="view"><div class="hero-card"><span class="eyebrow">ANIMATION LAB / GIF</span><h2>把一组图片，编排成一段动图。</h2><p>按文件名顺序读取图片序列，生成 GIF 或 WebP 动图，也可以反向拆帧。</p><div class="gif-actions"><button class="primary" id="gif-add">选择图片序列</button><button class="outline" id="gif-folder">选择文件夹</button><button class="outline" id="gif-clear">清空序列</button></div></div><div class="gif-grid"><div class="panel"><div class="panel-title"><span class="eyebrow">TIMELINE</span><span id="gif-count" class="pill">0 FRAMES</span></div><div id="gif-list" class="file-list empty"><div class="empty-state">添加连续编号的图片<br><small>例如 frame_001.png、frame_002.png</small></div></div></div><div class="panel"><div class="panel-title"><span class="eyebrow">MOTION PROFILE</span></div><label>输出格式</label><div class="format-grid two"><button data-gif-format="gif" class="selected">GIF<small>广泛兼容</small></button><button data-gif-format="webp">WEBP<small>体积更小</small></button></div><label>帧率 <output id="fps-output">12</output> FPS</label><input id="fps" type="range" min="1" max="60" value="12"><label>缩放宽度</label><input id="gif-width" placeholder="留空则保持原尺寸"><label class="check"><input id="loop" type="checkbox" checked> 循环播放</label><button class="run-button" id="run-gif">生成动图 <span>→</span></button></div></div></section>
+
+    <!-- 03 媒体互转（动图 / 视频） -->
+    <section id="view-media" class="view">
+      <div class="hero-card"><span class="eyebrow">MEDIA TRANSCODE</span><h2>动图与视频，任意互转。</h2><p>GIF、WebP 动图、APNG 与 MP4、WebM、MKV、MOV、AVI 之间任意互转，统一质量比例尺（无损 / 有损）。</p><div class="gif-actions"><button class="primary" id="media-add">选择动图或视频</button><button class="outline" id="media-clear">清空队列</button><button class="outline" id="import-fb-media">从文件夹批处理导入</button><button class="outline" id="auto-import-media">持续自动导入处理</button><button class="danger" id="auto-import-stop-media" style="display:none">停止自动导入</button></div></div>
+      <div class="workspace-grid">
+        <div class="column">
+          <div class="section-head"><div><span class="eyebrow">INPUT</span><h3>媒体队列 <b id="media-count">0</b></h3></div></div>
+          <div class="filter-bar" id="media-filter-bar"></div>
+          <div id="media-list" class="file-list empty"><div class="empty-state">添加 GIF / WebP 动图 / APNG / MP4 / MKV / WebM / MOV / AVI<br><small>任意动图与视频格式之间互转</small></div></div>
+        </div>
+        <div class="column panel-column">
+          <div class="panel">
+            <div class="panel-title"><span class="eyebrow">OUTPUT PROFILE</span><span class="pill">ANIM + VIDEO</span></div>
+            <label>输出格式</label>
+            <div class="format-grid" id="media-format-grid">
+              <button data-media-format="gif" class="selected">GIF<small>动图 · 调色板</small></button>
+              <button data-media-format="webp">WEBP<small>动图 · 体积小</small></button>
+              <button data-media-format="apng">APNG<small>动图 · 无损</small></button>
+              <button data-media-format="mp4">MP4<small>视频 · H.264</small></button>
+              <button data-media-format="webm">WEBM<small>视频 · VP9/AV1</small></button>
+              <button data-media-format="mkv">MKV<small>视频 · 多轨</small></button>
+              <button data-media-format="mov">MOV<small>视频 · Apple</small></button>
+              <button data-media-format="avi">AVI<small>视频 · 兼容</small></button>
+            </div>
+            <div id="media-anim-settings">
+              <div class="settings-heading" id="media-anim-heading">GIF 动图输出<small>调色板有损；质量以颜色数控制</small></div>
+              <div id="media-anim-quality-wrap"></div>
+              <div id="media-anim-extra"></div>
+              <label>帧率 <output id="media-fps-output">15</output> FPS</label>
+              <input id="media-fps" type="range" min="1" max="60" value="15">
+              <label>缩放宽度</label><input id="media-width" placeholder="留空保持原尺寸">
+              <label class="check"><input id="media-loop" type="checkbox" checked> 循环播放</label>
+            </div>
+            <div id="media-video-settings" class="hidden-setting">
+              <div class="settings-heading">视频编码输出<small>视频不支持无损；有损质量以 CRF 控制（0-51，0 最高）</small></div>
+              <label>视频编码器</label><select id="media-vcodec"><option value="libx264">H.264 (libx264)</option><option value="libx265">H.265 (libx265)</option><option value="libsvtav1">AV1 (libsvtav1)</option><option value="libvpx-vp9">VP9 (libvpx-vp9)</option></select>
+              <label>图片专有参数：CRF（有损质量） <output id="media-video-crf-output">CRF=26</output></label>
+              <input id="media-video-crf" type="range" min="0" max="51" value="26">
+              <div class="range-labels"><span>最高画质（CRF 0）</span><span>最低画质（CRF 51）</span></div>
+              <div class="quality-ticks"><span><i>100%</i><b>CRF=0</b></span><span><i>75%</i><b>CRF=13</b></span><span><i>50%</i><b>CRF=26</b></span><span><i>25%</i><b>CRF=38</b></span><span><i>0%</i><b>CRF=51</b></span></div>
+              <label>对应质量百分比 <output id="media-video-quality-output">50%</output></label>
+              <div class="percent-track"><div class="percent-fill" id="media-video-percent-fill" style="width:50%"></div></div>
+              <small class="policy-note">当前 CRF=26 对应质量 50%（仅作展示：100% = 最高画质，0% = 最低画质）</small>
+              <label>压缩率 / 速度 <output id="media-preset-output">veryslow</output></label>
+              <select id="media-preset"><option value="ultrafast">ultrafast（最快 / 最大）</option><option value="fast">fast</option><option value="medium">medium</option><option value="slow">slow</option><option value="veryslow" selected>veryslow（最慢 / 最小 · 最高压缩）</option></select>
+              <label>帧率（可选）</label><input id="media-vfps" placeholder="留空保持原始帧率">
+              <label>缩放（可选）</label><div class="inline-fields"><input id="media-vwidth" placeholder="宽"><span>×</span><input id="media-vheight" placeholder="高"></div>
+              <label>音频</label><select id="media-acodec"><option value="aac">AAC</option><option value="libopus">Opus</option><option value="libmp3lame">MP3</option><option value="none">无音频</option></select>
+              <label>音频码率</label><input id="media-abitrate" value="128k">
+            </div>
+            <div class="mode-row batch-row"><label class="batch-toggle"><input type="checkbox" id="media-batch"> 分批处理</label><label class="batch-size">每批 <input type="number" id="media-batch-size" value="3" min="1" max="100"> 个</label><small class="batch-hint">开启后按固定数量分批依次互转，可随时停止；关闭时按原有逻辑逐个处理。</small></div>
+            <div class="run-row"><button class="run-button" id="run-media">开始互转 <span>→</span></button><button class="run-button run-secondary" id="resume-media" style="display:none">继续 <span>↷</span></button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 音频转换 -->
+    <section id="view-audio" class="view">
+      <div class="hero-card"><span class="eyebrow">AUDIO TRANSCODE</span><h2>音频格式转换。</h2><p>MP3 / AAC / Opus / Vorbis / FLAC / WAV 等常见编码互转，支持比特率与采样率控制。</p><div class="gif-actions"><button class="primary" id="audio-add">选择音频文件</button><button class="outline" id="audio-clear">清空队列</button><button class="outline" id="import-fb-audio">从文件夹批处理导入</button><button class="outline" id="auto-import-audio">持续自动导入处理</button><button class="danger" id="auto-import-stop-audio" style="display:none">停止自动导入</button></div></div>
+      <div class="workspace-grid">
+        <div class="column">
+          <div class="section-head"><div><span class="eyebrow">INPUT</span><h3>音频队列 <b id="audio-count">0</b></h3></div></div>
+          <div class="filter-bar" id="audio-filter-bar"></div>
+          <div id="audio-list" class="file-list empty"><div class="empty-state">添加一个或多个音频文件<br><small>将逐个转码并输出到相同目录</small></div></div>
+        </div>
+        <div class="column panel-column">
+          <div class="panel"><div class="panel-title"><span class="eyebrow">OUTPUT PROFILE</span><span class="pill">CODEC + BITRATE</span></div>
+            <label>输出格式</label><select id="audio-container"><option value="mp3">MP3 (.mp3)</option><option value="m4a">M4A / AAC (.m4a)</option><option value="opus">Opus (.opus)</option><option value="ogg">Ogg Vorbis (.ogg)</option><option value="flac">FLAC (.flac)</option><option value="wav">WAV PCM (.wav)</option></select>
+            <label>编码器</label><select id="audio-acodec"><option value="libmp3lame">MP3 (libmp3lame)</option><option value="aac">AAC</option><option value="libopus">Opus (libopus)</option><option value="libvorbis">Vorbis (libvorbis)</option><option value="flac">FLAC（无损）</option><option value="pcm_s16le">PCM s16le（WAV）</option></select>
+            <label>比特率</label><input id="audio-bitrate" value="192k" placeholder="例如 192k，无损可留空">
+            <label>采样率（可选）</label><select id="audio-samplerate"><option value="">保持原始</option><option value="44100">44100 Hz</option><option value="48000">48000 Hz</option><option value="22050">22050 Hz</option></select>
+            <div class="mode-row batch-row"><label class="batch-toggle"><input type="checkbox" id="audio-batch"> 分批处理</label><label class="batch-size">每批 <input type="number" id="audio-batch-size" value="3" min="1" max="100"> 个</label><small class="batch-hint">开启后按固定数量分批依次转换，可随时停止；关闭时按原有逻辑逐个处理。</small></div>
+            <div class="run-row"><button class="run-button" id="run-audio">开始转换 <span>→</span></button><button class="run-button run-secondary" id="resume-audio" style="display:none">继续 <span>↷</span></button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 滤镜工作台 -->
+    <section id="view-filter" class="view">
+      <div class="hero-card"><span class="eyebrow">FILTER WORKBENCH</span><h2>给媒体加一层滤镜。</h2><p>从滤镜库选择（几何 / 模糊 / 色彩 / 特效 / 合成 / 文字），配置参数后直接应用。</p><div class="gif-actions"><button class="primary" id="filter-add">选择媒体文件</button><button class="outline" id="filter-clear">清除文件</button></div></div>
+      <div class="gif-grid filter-grid">
+        <div class="panel"><div class="panel-title"><span class="eyebrow">FILTER LIBRARY</span><span id="filter-file-name" class="pill">未选择文件</span></div>
+          <input id="filter-search" class="filter-search" placeholder="搜索滤镜…">
+          <div id="filter-list" class="filter-list"><div class="empty-state">点击「选择媒体文件」开始<br><small>滤镜来自本机 FFmpeg 能力</small></div></div>
+        </div>
+        <div class="panel"><div class="panel-title"><span class="eyebrow">FILTER CONFIG</span><span id="filter-name" class="pill">—</span></div>
+          <div id="filter-config" class="filter-config"><p class="muted">选择左侧滤镜后在此配置参数</p></div>
+          <label>输出文件名</label><input id="filter-outname" value="filtered" placeholder="输出名（自动加扩展名）">
+          <div class="command-preview"><span>ffmpeg</span><code id="filter-command-preview">—</code></div>
+          <button class="run-button" id="run-filter">应用滤镜 <span>→</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 高级命令 -->
+    <section id="view-advanced" class="view"><div class="panel advanced-panel"><div class="panel-title"><div><span class="eyebrow">POWER MODE</span><h2>高级 FFmpeg 命令</h2></div><span class="pill">DIRECT CLI</span></div><p class="muted">对选中的第一个文件执行自定义参数。输出文件需要包含完整路径。</p><div id="advanced-source" class="source-box">尚未选择输入文件</div><textarea id="custom-args" spellcheck="false">-vf scale=1280:-2 -c:v libwebp -quality 82</textarea><div class="command-preview"><span>ffmpeg</span><code id="command-preview">ffmpeg [input] -vf scale=1280:-2 -c:v libwebp -quality 82 [output]</code></div><button class="run-button" id="run-advanced">执行命令 <span>→</span></button></div></section>
+
+    <!-- 07 能力扫描 -->
+    <section id="view-capabilities" class="view"><div class="cap-top"><div><span class="eyebrow">ENGINE INVENTORY</span><h2>FFmpeg 能力扫描</h2><p class="muted">读取本机 FFmpeg 的格式、编码器和滤镜清单，点击条目可复制名称，并可直接在视频 / 音频转换中使用。</p></div><button class="primary" id="scan-capabilities">重新扫描</button></div><div class="cap-grid"><div class="cap-card"><b id="format-total">—</b><span>封装格式</span></div><div class="cap-card"><b id="codec-total">—</b><span>编解码器</span></div><div class="cap-card"><b id="filter-total">—</b><span>滤镜</span></div></div><div class="cap-tabs"><button class="cap-tab active" data-cap="formats">封装格式</button><button class="cap-tab" data-cap="codecs">编解码器</button><button class="cap-tab" data-cap="filters">滤镜</button><button class="cap-tab" data-cap="hwaccels">硬件加速</button></div><input id="cap-search" class="cap-search" placeholder="输入关键词过滤…"><pre id="cap-output" class="cap-output">点击“重新扫描”读取能力清单…</pre></section>
+
+    <!-- 08 完整性检查 -->
+    <section id="view-integrity" class="view">
+      <div class="hero-card"><span class="eyebrow">INTEGRITY CHECK</span><h2>文件完整性检查。</h2><p>复制、传输、解压、打包后，或转换中途意外关机产生的半成品，都可能损坏文件。做去重或清理前先检查一遍，损坏文件可单独或一键删除。</p><div class="gif-actions"><button class="primary" id="integrity-add">选择文件 / 文件夹</button><button class="outline" id="integrity-clear">清空队列</button><button class="danger" id="integrity-delete-all">删除全部损坏</button><button class="outline" id="import-fb-integrity">从文件夹批处理导入</button><button class="outline" id="auto-import-integrity">持续自动导入处理</button><button class="danger" id="auto-import-stop-integrity" style="display:none">停止自动导入</button></div></div>
+      <div class="workspace-grid">
+        <div class="column">
+          <div class="panel compact">
+            <div class="panel-title"><span class="eyebrow">CHECK MODE</span><span class="pill" id="integrity-count">0 个文件</span></div>
+            <label>检查模式</label>
+            <div class="mode-row"><button class="mode-btn selected" id="integrity-mode-quick">快速（读头 + 图片解码）</button><button class="mode-btn" id="integrity-mode-full">完整（全解码）</button></div>
+            <small class="policy-note">快速：读取文件头并解码静态图片首帧；完整：解码全部帧，能发现尾部截断等深层损坏（动图 / 视频较慢）。</small>
+            <div class="mode-row batch-row"><label class="batch-toggle"><input type="checkbox" id="integrity-batch"> 分批检查</label><label class="batch-size">每批 <input type="number" id="integrity-batch-size" value="5" min="1" max="100"> 个</label><small class="batch-hint">开启后按固定数量分批依次检查，降低大文件夹时窗口压力；关闭时按原有逻辑一次性检查。</small></div>
+            <div class="run-row"><button class="run-button" id="integrity-run">开始检查 <span>→</span></button><button class="run-button run-secondary" id="resume-integrity" style="display:none">继续 <span>↷</span></button></div>
+          </div>
+          <div id="integrity-list" class="file-list empty"><div class="empty-state">添加要检查的文件或文件夹<br><small>可拖入文件 / 文件夹，递归扫描子目录</small></div></div>
+        </div>
+        <div class="column">
+          <div class="panel">
+            <div class="panel-title"><span class="eyebrow">DAMAGED FILES</span><span class="pill" id="integrity-damaged-count">0 损坏</span></div>
+            <div id="integrity-damaged" class="file-list empty"><div class="empty-state">暂无损坏文件<br><small>检查完成后损坏文件会罗列在这里</small></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 09 偏好设置 -->
+    <section id="view-settings" class="view">
+      <div class="panel engine-panel"><div class="panel-title"><div><span class="eyebrow">FFMPEG ENGINE</span><h2>引擎路径与配置保存</h2></div><span id="settings-engine-validation" class="pill">未检测</span></div>
+        <label>当前 FFmpeg 路径</label>
+        <div class="engine-path-row"><select id="settings-path-select"><option value="">（输入或选择路径）</option></select><button class="outline" id="settings-choose-ffmpeg">浏览…</button><button class="primary" id="settings-validate-ffmpeg">检测并使用</button></div>
+        <small class="policy-note">已保存的路径会出现在下拉列表中（自动记忆最近 8 个）。检测通过后立即保存到本机配置，下次启动自动加载。</small>
+        <div class="engine-path-row" style="margin-top:12px"><input id="settings-path-input" readonly placeholder="选择或粘贴 ffmpeg.exe 完整路径"><button class="outline" id="settings-clear-ffmpeg">清空</button></div>
+        <div class="settings-actions-row"><button class="text-button" id="settings-save-now">立即保存当前路径</button><button class="text-button" id="settings-reset-engine">恢复默认路径</button></div>
+      </div>
+      <div class="panel"><div class="panel-title"><div><span class="eyebrow">DEFAULT PROFILE</span><h2>转换设置管理</h2></div><span class="pill">PERSISTED</span></div>
+        <p class="muted">「图片转换」「动图工坊」「媒体互转」「音频转换」中的所有参数，都可以保存为默认配置；启动时自动套用上次保存的手动内容。</p>
+        <div class="settings-actions-row"><button class="primary" id="settings-save-all">保存全部当前设置</button><button class="outline" id="settings-reset-all">恢复默认设置</button></div>
+        <small class="policy-note">保存范围：图片转换 8 格式的质量 / 速度 / 无损参数、尺寸、压缩目标、删除策略、线程与硬件加速、动图 / 媒体互转 / 音频参数。配置文件：%APPDATA%\ffmpeg-studio\ffmpeg-studio.json</small>
+      </div>
+    </section>
+
+    <!-- 10 文件夹流式批处理 -->
+    <section id="view-folder-batch" class="view">
+      <div class="hero-card"><span class="eyebrow">FOLDER STREAM BATCH</span><h2>文件夹流式批处理</h2><p>管理多个文件夹的文件源，<b>流式枚举</b>：每次只读取 N 个文件，不预先扫描全部，避免数十万文件一次性加载导致黑屏。各功能视图可导入当前批次文件进行处理。</p></div>
+      <div class="workspace-grid">
+        <div class="column">
+          <div class="panel"><div class="panel-title"><span class="eyebrow">01 / FOLDERS</span><span class="pill" id="fb-folder-count">0 个文件夹</span></div>
+            <div class="inline-fields"><input id="fb-folder-input" placeholder="拖入多个文件夹，或点浏览添加" readonly><button class="outline" id="fb-choose-folder">添加</button></div>
+            <div id="fb-folder-list" class="fb-folder-list empty"><div class="empty-state">还没有添加文件夹<br><small>可拖入多个文件夹，或点浏览逐个添加</small></div></div>
+            <label class="check"><input id="fb-recursive" type="checkbox" checked> 递归扫描子文件夹</label>
+          </div>
+          <div class="panel"><div class="panel-title"><span class="eyebrow">02 / FORMAT FILTER</span></div>
+            <div class="filter-bar" id="fb-filter-bar"></div>
+            <small class="policy-note">勾选后忽略该格式（默认全部接收）。枚举时自动过滤。</small>
+          </div>
+          <div class="panel"><div class="panel-title"><span class="eyebrow">03 / BATCH SIZE</span></div>
+            <label>每批文件数</label>
+            <select id="fb-batch-size"><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option><option value="500">500</option><option value="1000">1000</option></select>
+            <small class="policy-note" style="margin-top:8px">流式枚举每次只读取这么多文件，处理完再继续下一批。</small>
+          </div>
+        </div>
+        <div class="column panel-column">
+          <div class="panel"><div class="panel-title"><span class="eyebrow">04 / STREAM STATUS</span></div>
+            <div class="fb-stats">
+              <div class="fb-stat"><span>已扫描</span><b id="fb-scanned">0</b></div>
+              <div class="fb-stat"><span>已获取批次</span><b id="fb-batch-count">0</b></div>
+              <div class="fb-stat"><span>状态</span><b id="fb-status">空闲</b></div>
+              <div class="fb-stat"><span>每批</span><b id="fb-batch-size-display">100</b></div>
+            </div>
+            <div class="run-row"><button class="primary" id="fb-start-stream">启动流式枚举</button><button class="outline" id="fb-reset-stream">重置</button><button class="outline" id="fb-fetch-batch">获取下一批预览</button></div>
+            <small class="policy-note">启动后不扫描全部文件，只维护枚举游标。在各功能视图点「从文件夹批处理导入」会自动启动并获取下一批。重置后从头开始。</small>
+          </div>
+          <div class="panel compact"><div class="panel-title"><span class="eyebrow">CURRENT BATCH PREVIEW</span><span class="pill" id="fb-preview-count">0</span></div>
+            <div id="fb-batch-preview" class="fb-batch-preview empty"><div class="empty-state">启动流式枚举后显示当前批次文件预览<br><small>最多显示 50 行</small></div></div>
+          </div>
+          <div class="panel compact"><div class="panel-title"><span class="eyebrow">LOG</span></div><div id="fb-log" class="fb-log">等待添加文件夹…</div></div>
+        </div>
+      </div>
+    </section>
+
+    <footer><div class="log-label"><span class="dot"></span> PROCESS LOG</div><div id="log" class="log">就绪。请选择文件开始。</div></footer>
+  </main>
+  <script src="renderer.js"></script>
+</body></html>

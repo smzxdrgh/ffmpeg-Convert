@@ -1,0 +1,13 @@
+{
+  "name": "ffmpeg-studio",
+  "version": "0.1.0",
+  "description": "Windows batch image and animation workstation powered by FFmpeg",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}
