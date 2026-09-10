@@ -69,6 +69,8 @@ npm install
 
 # 3. 启动
 npm start
+或双击index.html在默认浏览器中打开界面
+或双击启动FFmpeg工作台.bat以独立窗口打开界面
 ```
 
 ### FFmpeg 配置
