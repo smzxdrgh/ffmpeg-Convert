@@ -1,12 +1,28 @@
 {
-  "name": "ffmpeg-studio",
-  "version": "0.1.0",
-  "description": "Windows batch image and animation workstation powered by FFmpeg",
+  "name": "ffmpeg-convert",
+  "version": "1.0.0",
+  "description": "FFmpeg 驱动的桌面级媒体转换工作台：图片 / 动图 / 视频 / 音频任意互转，支持无损与有损质量体系、滤镜、损坏检查与流式批量处理。",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron ."
   },
+  "license": "MIT",
+  "author": "Anewcov",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Anewcov/ffmpeg-Convert.git"
+  },
+  "keywords": [
+    "ffmpeg",
+    "electron",
+    "converter",
+    "image",
+    "video",
+    "audio",
+    "gif",
+    "avif"
+  ],
   "devDependencies": {
     "electron": "^31.0.0"
   }

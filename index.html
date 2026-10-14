@@ -17,23 +17,24 @@
     <button class="nav" data-view="integrity"><i>✚</i><span>完整性检查</span> <em>08</em></button>
     <button class="nav" data-view="settings"><i>⚙</i><span>偏好设置</span> <em>09</em></button>
     <button class="nav" data-view="folder-batch"><i>▤</i><span>文件夹批处理</span> <em>10</em></button>
+    <button class="nav" data-view="adv-filter"><i>⧩</i><span>高级过滤</span> <em>11</em></button>
     <div class="sidebar-foot"><span class="dot"></span><span id="engine-status">正在检测引擎</span><small id="engine-path">FFMPEG_HOME</small></div>
   </aside>
   <main>
-    <header><div><div class="eyebrow">LOCAL MEDIA PIPELINE / WINDOWS</div><h1 id="page-title">图片转换</h1><p id="page-subtitle">批量处理图片，保持画质，也保持节奏。</p></div><button class="icon-button" id="about-btn">?</button></header>
+    <header><div><div class="eyebrow">LOCAL MEDIA PIPELINE / WINDOWS</div><h1 id="page-title">图片转换</h1><p id="page-subtitle">批量处理图片，保持画质，也保持节奏。</p></div><div style="display:flex;gap:6px;align-items:center;"><button id="gentle-stop" title="不再启动新进程，已启动的跑完" style="white-space:nowrap;padding:6px 12px;border:1px solid #555;border-radius:6px;background:transparent;color:#ccc;cursor:pointer;font-size:12px;">⏸ 温和停止</button><button id="hard-stop" title="杀掉所有 ffmpeg 进程" style="white-space:nowrap;padding:6px 12px;border:1px solid #e53935;border-radius:6px;background:transparent;color:#e53935;cursor:pointer;font-size:12px;">⏹ 强制停止</button><button class="icon-button" id="about-btn">?</button></div></header>
 
     <!-- 01 图片转换 -->
     <section id="view-convert" class="view active-view">
       <div class="workspace-grid">
         <div class="column">
-          <div class="dropzone" id="dropzone"><div class="drop-icon">＋</div><h2>拖入文件开始</h2><p>支持 PNG、JPG、WEBP、BMP、TIFF、AVIF、JPEG-XL 与 GIF</p><button class="primary" id="add-files">选择文件 <span>⌘ K</span></button><button class="outline" id="import-fb-convert" style="margin-left:8px">从文件夹批处理导入</button><button class="outline" id="auto-import-convert" style="margin-left:8px">持续自动导入处理</button><button class="danger" id="auto-import-stop-convert" style="margin-left:8px;display:none">停止自动导入</button></div>
+          <div class="dropzone" id="dropzone"><div class="drop-icon">＋</div><h2>拖入文件开始</h2><p>支持 PNG、JPG、WEBP、BMP、TIFF、AVIF、JPEG-XL 与 GIF<br><small style="opacity:0.6">直接选文件夹按文件名自然排序；文件夹批处理流式枚举按磁盘目录顺序</small></p><button class="primary" id="add-files">选择文件 <span>⌘ K</span></button><button class="outline" id="import-fb-convert" style="margin-left:8px">从文件夹批处理导入</button><button class="outline" id="auto-import-convert" style="margin-left:8px">持续自动导入处理</button><button class="danger" id="auto-import-stop-convert" style="margin-left:8px;display:none">停止自动导入</button></div>
           <div class="filter-bar" id="image-filter-bar"></div>
           <div class="section-head"><div><span class="eyebrow">01 / INPUT QUEUE</span><h3>处理队列 <b id="file-count">0</b></h3></div><div class="queue-total"><span id="progress-count">0/0</span><div class="queue-bar"><i id="progress-fill"></i></div></div><button class="text-button" id="clear-files">清空</button></div>
           <div id="file-list" class="file-list empty"><div class="empty-state">还没有文件<br><small>单次可添加多个文件，自动批量处理</small></div></div>
         </div>
         <div class="column panel-column">
           <div class="panel"><div class="panel-title"><span class="eyebrow">02 / OUTPUT PROFILE</span><span class="pill">8 FORMATS</span></div><label>输出格式</label><div class="format-grid" id="format-grid"><button data-format="webp" class="selected">WEBP<small>图片 / 动图</small></button><button data-format="png">PNG<small>无损 / 透明</small></button><button data-format="jpg">JPG<small>照片 / 兼容</small></button><button data-format="avif">AVIF<small>高压缩 / HDR</small></button><button data-format="gif">GIF<small>调色板 / 动图</small></button><button data-format="bmp">BMP<small>位图 / 无损</small></button><button data-format="tiff">TIFF<small>无损 / 印刷</small></button><button data-format="jpegxl">JPEG-XL<small>下一代 / 无损</small></button></div><div id="format-settings"></div><label>尺寸调整</label><div class="inline-fields"><input id="width" placeholder="宽度 px"><span>×</span><input id="height" placeholder="高度 px"></div><label class="check"><input id="keep-ratio" type="checkbox" checked> 保持宽高比</label></div>
-          <div class="panel compact"><div class="panel-title"><span class="eyebrow">03 / DESTINATION</span><span class="settings-actions"><button class="text-button" id="save-defaults" title="把当前所有转换设置保存为默认值，下次启动自动套用">保存为默认</button><button class="text-button" id="reset-defaults" title="恢复全部转换设置为默认值">恢复默认</button></span></div><div class="destination"><div><strong id="output-dir">与源文件相同目录</strong><small>默认使用源文件所在文件夹</small></div><button class="outline" id="choose-dir">选择文件夹</button></div><label>输出文件名</label><select id="filename-mode"><option value="original">使用原文件名</option><option value="custom">自定义文件名模板</option></select><input id="filename-template" class="filename-template" value="{name}" placeholder="例如：compressed_{name}_{index}" disabled><small class="policy-note filename-help">自定义模板支持：{name} 原文件名、{index} 批量序号。扩展名会根据输出格式自动添加。</small><div class="size-policy"><label class="check"><input id="size-gate" type="checkbox" checked> 仅保留达到压缩目标的输出</label><label>目标缩小比例 <output id="size-target-output">20%</output></label><input id="size-target" type="range" min="0" max="90" value="20"><div class="range-labels"><span>只需不变大</span><span>至少缩小 90%</span></div><p>输出必须不大于原文件的 <strong id="size-limit-label">80%</strong>；输出变大时始终自动丢弃。</p><label class="check danger-check"><input id="delete-original" type="checkbox"> 输出通过后删除原文件</label><small class="policy-note">仅在输出文件被保留且达到上方门槛时删除，失败或变大时原文件不会删除。</small></div><div class="mode-row batch-row"><label class="batch-toggle"><input type="checkbox" id="convert-batch"> 分批处理</label><label class="batch-size">每批 <input type="number" id="convert-batch-size" value="5" min="1" max="100"> 个</label><small class="batch-hint">开启后按固定数量分批依次处理，降低大文件夹时窗口压力；关闭时按原有逻辑处理。</small></div><div class="run-row"><button class="run-button" id="run-convert">开始批量转换 <span>→</span></button><button class="run-button run-secondary" id="resume-convert" style="display:none">继续 <span>↷</span></button></div></div>
+          <div class="panel compact"><div class="panel-title"><span class="eyebrow">03 / DESTINATION</span><span class="settings-actions"><button class="text-button" id="save-defaults" title="把当前所有转换设置保存为默认值，下次启动自动套用">保存为默认</button><button class="text-button" id="reset-defaults" title="恢复全部转换设置为默认值">恢复默认</button></span></div><div class="destination"><div><strong id="output-dir">与源文件相同目录</strong><small>默认使用源文件所在文件夹</small></div><button class="outline" id="choose-dir">选择文件夹</button></div><label>输出文件名</label><select id="filename-mode"><option value="original">使用原文件名</option><option value="custom">自定义文件名模板</option></select><input id="filename-template" class="filename-template" value="{name}" placeholder="例如：compressed_{name}_{index}" disabled><small class="policy-note filename-help">自定义模板支持：{name} 原文件名、{index} 批量序号。扩展名会根据输出格式自动添加。</small><div class="size-policy"><label class="check"><input id="size-gate" type="checkbox" checked> 仅保留达到压缩目标的输出</label><label>目标缩小比例 <output id="size-target-output">20%</output></label><input id="size-target" type="range" min="0" max="90" value="20"><div class="range-labels"><span>只需不变大</span><span>至少缩小 90%</span></div><p>勾选后，输出必须不大于原文件的 <strong id="size-limit-label">80%</strong>；不勾选时任何输出（含变大）都会保留。</p><label class="check danger-check"><input id="delete-original" type="checkbox"> 输出通过后删除原文件</label><small class="policy-note">仅在输出文件被保留且达到上方门槛时删除，失败或变大时原文件不会删除。</small></div><div class="mode-row batch-row"><label class="batch-toggle"><input type="checkbox" id="convert-batch"> 分批处理</label><label class="batch-size">每批 <input type="number" id="convert-batch-size" value="5" min="1" max="100"> 个</label><small class="batch-hint">开启后按固定数量分批依次处理，降低大文件夹时窗口压力；关闭时按原有逻辑处理。</small></div><div class="run-row"><button class="run-button" id="run-convert">开始批量转换 <span>→</span></button><button class="run-button run-secondary" id="resume-convert" style="display:none">继续 <span>↷</span></button></div></div>
         </div>
       </div>
     </section>
@@ -75,7 +76,7 @@
             </div>
             <div id="media-video-settings" class="hidden-setting">
               <div class="settings-heading">视频编码输出<small>视频不支持无损；有损质量以 CRF 控制（0-51，0 最高）</small></div>
-              <label>视频编码器</label><select id="media-vcodec"><option value="libx264">H.264 (libx264)</option><option value="libx265">H.265 (libx265)</option><option value="libsvtav1">AV1 (libsvtav1)</option><option value="libvpx-vp9">VP9 (libvpx-vp9)</option></select>
+              <label>视频编码器</label><select id="media-vcodec"><option value="libx264">H.264 (libx264 · CPU)</option><option value="libx265">H.265 (libx265 · CPU)</option><option value="libsvtav1">AV1 (libsvtav1 · CPU)</option><option value="libvpx-vp9">VP9 (libvpx-vp9 · CPU)</option><option value="h264_nvenc">H.264 (NVENC · NVIDIA GPU)</option><option value="hevc_nvenc">H.265 (NVENC · NVIDIA GPU)</option><option value="av1_nvenc">AV1 (NVENC · NVIDIA GPU)</option><option value="h264_qsv">H.264 (QSV · Intel GPU)</option><option value="hevc_qsv">H.265 (QSV · Intel GPU)</option><option value="av1_qsv">AV1 (QSV · Intel GPU)</option></select>
               <label>图片专有参数：CRF（有损质量） <output id="media-video-crf-output">CRF=26</output></label>
               <input id="media-video-crf" type="range" min="0" max="51" value="26">
               <div class="range-labels"><span>最高画质（CRF 0）</span><span>最低画质（CRF 51）</span></div>
@@ -184,7 +185,7 @@
 
     <!-- 10 文件夹流式批处理 -->
     <section id="view-folder-batch" class="view">
-      <div class="hero-card"><span class="eyebrow">FOLDER STREAM BATCH</span><h2>文件夹流式批处理</h2><p>管理多个文件夹的文件源，<b>流式枚举</b>：每次只读取 N 个文件，不预先扫描全部，避免数十万文件一次性加载导致黑屏。各功能视图可导入当前批次文件进行处理。</p></div>
+      <div class="hero-card"><span class="eyebrow">FOLDER STREAM BATCH</span><h2>文件夹流式批处理</h2><p>管理多个文件夹的文件源，<b>流式枚举</b>：每次只读取 N 个文件，不预先扫描全部，避免数十万文件一次性加载导致黑屏。各功能视图可导入当前批次文件进行处理。<br><small style="opacity:0.6">排序规则：按磁盘目录遍历顺序（非文件名/大小/日期排序），为速度优先</small></p></div>
       <div class="workspace-grid">
         <div class="column">
           <div class="panel"><div class="panel-title"><span class="eyebrow">01 / FOLDERS</span><span class="pill" id="fb-folder-count">0 个文件夹</span></div>
@@ -198,8 +199,12 @@
           </div>
           <div class="panel"><div class="panel-title"><span class="eyebrow">03 / BATCH SIZE</span></div>
             <label>每批文件数</label>
-            <select id="fb-batch-size"><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option><option value="500">500</option><option value="1000">1000</option></select>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <select id="fb-batch-size-preset"><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option><option value="500">500</option><option value="1000">1000</option><option value="custom">自定义…</option></select>
+              <input type="number" id="fb-batch-size" value="100" min="1" max="5000" style="width:100px;display:none;" disabled>
+            </div>
             <small class="policy-note" style="margin-top:8px">流式枚举每次只读取这么多文件，处理完再继续下一批。</small>
+            <label class="check" style="margin-top:8px;"><input type="checkbox" id="fb-filter-at-scan" checked> 枚举时即过滤（高级过滤启用时，预览也只显示符合条件的文件）</label>
           </div>
         </div>
         <div class="column panel-column">
@@ -217,6 +222,56 @@
             <div id="fb-batch-preview" class="fb-batch-preview empty"><div class="empty-state">启动流式枚举后显示当前批次文件预览<br><small>最多显示 50 行</small></div></div>
           </div>
           <div class="panel compact"><div class="panel-title"><span class="eyebrow">LOG</span></div><div id="fb-log" class="fb-log">等待添加文件夹…</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 高级过滤（Duplicate Cleaner 风格） -->
+    <section id="view-adv-filter" class="view">
+      <div class="hero-card"><span class="eyebrow">ADVANCED FILTER</span><h2>独立文件过滤规则</h2><p>参考 Duplicate Cleaner 的扫描过滤器设计。<b>启用后替代所有其他过滤规则</b>（图片/媒体/音频白名单、忽略格式勾选全部失效），允许导入未知扩展名（如 txt → avif 的特殊分发）。可勾选在哪些视图生效。</p></div>
+      <div class="workspace-grid">
+        <div class="column">
+          <div class="panel">
+            <div class="panel-title"><span class="eyebrow">01 / ACTIVATION</span><span class="pill" id="advf-status">未启用</span></div>
+            <label class="check"><input id="advf-enabled" type="checkbox"> 启用高级过滤（生效时覆盖其他所有过滤）</label>
+            <small class="policy-note">勾选后，下方规则优先于各视图的格式白名单和「忽略格式」勾选。未勾选时所有规则不生效，走原逻辑。</small>
+            <label>应用到哪些视图</label>
+            <div class="advf-targets">
+              <label class="check"><input type="checkbox" id="advf-target-convert" checked> 图片转换</label>
+              <label class="check"><input type="checkbox" id="advf-target-media" checked> 媒体互转</label>
+              <label class="check"><input type="checkbox" id="advf-target-audio"> 音频转换</label>
+              <label class="check"><input type="checkbox" id="advf-target-integrity" checked> 完整性检查</label>
+              <label class="check"><input type="checkbox" id="advf-target-folder" checked> 文件夹批处理导入</label>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span class="eyebrow">02 / FILE TYPES</span></div>
+            <label>包含扩展名（分号分隔，留空 = 全部）</label>
+            <input id="advf-include" placeholder="例如：*.txt;*.webp;*.png  或  *.*">
+            <label>排除扩展名（分号分隔）</label>
+            <input id="advf-exclude" placeholder="例如：*.db;*.ini;*.tmp">
+            <small class="policy-note">支持 *.ext 或 .ext 或纯扩展名；多条用分号 ; 分隔。包含留空 = 接受任意扩展名（排除仍生效）。</small>
+          </div>
+        </div>
+        <div class="column panel-column">
+          <div class="panel">
+            <div class="panel-title"><span class="eyebrow">03 / FILE SIZE</span></div>
+            <div class="inline-fields"><input id="advf-min-size" type="number" min="0" placeholder="最小"><select id="advf-min-unit"><option value="1">B</option><option value="1024">KB</option><option value="1048576">MB</option><option value="1073741824">GB</option></select></div>
+            <div class="inline-fields" style="margin-top:8px"><input id="advf-max-size" type="number" min="0" placeholder="最大"><select id="advf-max-unit"><option value="1">B</option><option value="1024" selected>KB</option><option value="1048576">MB</option><option value="1073741824">GB</option></select></div>
+            <small class="policy-note">留空 = 不限制。大小为 0 表示不启用该边界。</small>
+            <label class="check" style="margin-top:8px"><input id="advf-ignore-zero" type="checkbox" checked> 忽略 0 字节空文件</label>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span class="eyebrow">04 / FOLDERS</span></div>
+            <label>排除文件夹名（路径中含此段即丢弃）</label>
+            <input id="advf-exclude-folders" placeholder="例如：.tmp;_cache;@eaDir">
+            <small class="policy-note">匹配文件所在路径中任意一级文件夹名，不区分大小写；多条用分号分隔。</small>
+          </div>
+          <div class="panel compact">
+            <div class="panel-title"><span class="eyebrow">SAVE</span></div>
+            <div class="run-row"><button class="primary" id="advf-save">保存为默认</button><button class="outline" id="advf-reset">恢复默认</button></div>
+            <small class="policy-note">配置随应用持久化到 ffmpeg-studio.json，下次启动自动套用。</small>
+          </div>
         </div>
       </div>
     </section>

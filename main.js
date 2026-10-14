@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const defaultRoot = 'G:\\ffmpeg';
+const defaultRoot = '';
 const settingsFile = () => path.join(app.getPath('userData'), 'ffmpeg-studio.json');
 let mainWindow;
 let selectedFfmpeg = process.env.FFMPEG_PATH || '';
@@ -102,14 +102,20 @@ ipcMain.handle('pick-any', async () => (await dialog.showOpenDialog({ properties
 ipcMain.handle('list-all-files', (_, directory) => collectFiles(directory).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })));
 // 流式文件枚举（有状态，单用户桌面应用；每次只取 N 个，避免数十万文件一次性加载）
 let fileStream = null;
-ipcMain.handle('stream-start', (_, { folders, recursive, ignoreExts }) => {
+ipcMain.handle('stream-start', (_, { folders, recursive, ignoreExts, allowedExts }) => {
+  // allowedExts: 白名单（小写无点扩展名数组）。传入时只收这些扩展名；不传则收全部（完整性检查场景）
+  const allowSet = Array.isArray(allowedExts) && allowedExts.length
+    ? new Set(allowedExts.map(e => String(e).toLowerCase().replace(/^\./, '')))
+    : null;
   fileStream = {
     folders: Array.isArray(folders) ? [...folders] : (folders ? [folders] : []),
     folderIndex: 0,
     dirStack: [],
     recursive: recursive !== false,
     ignoreExts: new Set((ignoreExts || []).map(e => String(e).toLowerCase().replace(/^\./, ''))),
-    totalScanned: 0
+    allowExts: allowSet,
+    totalScanned: 0,
+    totalKept: 0
   };
   return { ok: true };
 });
@@ -145,16 +151,19 @@ ipcMain.handle('stream-next', (_, count) => {
         continue;
       }
       const ext = path.extname(entry.name).toLowerCase().replace(/^\./, '');
-      if (fileStream.ignoreExts.has(ext)) continue;
-      files.push(full);
       fileStream.totalScanned++;
+      // 先黑名单（用户勾选忽略的格式），再白名单（功能视图允许的格式）
+      if (fileStream.ignoreExts.has(ext)) continue;
+      if (fileStream.allowExts && !fileStream.allowExts.has(ext)) continue;
+      files.push(full);
+      fileStream.totalKept++;
       advanced = true;
       break;
     }
     if (!advanced) fileStream.dirStack.pop();
   }
   const done = fileStream.dirStack.length === 0 && fileStream.folderIndex >= fileStream.folders.length;
-  return { ok: true, files, done, totalScanned: fileStream.totalScanned };
+  return { ok: true, files, done, totalScanned: fileStream.totalScanned, totalKept: fileStream.totalKept };
 });
 ipcMain.handle('stream-reset', () => { fileStream = null; return { ok: true }; });
 
@@ -162,6 +171,39 @@ const stripMuxerDts = (s) => (s || '').replace(/.*non monotonically increasing d
 const damagePattern = () => /(error|invalid|corrupt|damaged|crc|truncat|end of file|not a (png|jpeg|jpg|gif|tiff|bmp|webp)|broken|failed to|unable|no such|mismatch|decode failed|decoding failed|lzw decode|short read|partial|overread|not enough data|parsing|obu|eoi missing|premature)/i;
 ipcMain.handle('check-integrity', async (_, { file, mode }) => { let stats; try { stats = fs.statSync(file); } catch { return { ok: false, status: 'damaged', error: '文件不存在或不可访问' }; } if (stats.size === 0) return { ok: false, status: 'damaged', error: '空文件（0 字节）' }; const damage = /(error|invalid|corrupt|damaged|crc|truncat|end of file|not a (png|jpeg|jpg|gif|tiff|bmp|webp)|broken|failed to|unable|no such|mismatch|decode failed|decoding failed|lzw decode|short read|partial|overread|not enough data|parsing|obu|eoi missing|premature)/i; const probe = await run(paths().ffprobe, ['-v','error','-show_entries','format=format_name,duration,size','-of','json',file], { timeoutMs: 30000 }); if (!probe.ok) return { ok: false, status: 'damaged', error: probe.timedOut ? '读取文件头超时' : (cleanError(probe.stderr) || '无法读取文件头') }; if (mode === 'quick') { if (/\.(mp4|mov|webm|mkv|avi|ts|mts|m2ts|mpg|mpeg|wmv|flv|3gp|m4v)$/i.test(file)) return { ok: true, status: 'ok' }; const dec = await run(paths().ffmpeg, ['-v','error','-i',file,'-map','0:v:0','-f','null','-'], { timeoutMs: 60000 }); if (!dec.ok || damage.test(stripMuxerDts(dec.stderr))) return { ok: false, status: 'damaged', error: dec.timedOut ? '解码超时（疑似损坏或超大文件）' : (cleanError(dec.stderr) || '解码校验失败') }; return { ok: true, status: 'ok' }; } const dec = await run(paths().ffmpeg, ['-v','error','-i',file,'-map','0','-f','null','-'], { timeoutMs: 120000 }); if (!dec.ok || damage.test(stripMuxerDts(dec.stderr))) return { ok: false, status: 'damaged', error: dec.timedOut ? '完整解码超时（疑似损坏或超大文件）' : (cleanError(dec.stderr) || '解码校验失败') }; return { ok: true, status: 'ok' }; });
 ipcMain.handle('repair-file', async (_, { file }) => { try { if (!fs.existsSync(file)) return { ok: false, error: '文件不存在' }; const stats = fs.statSync(file); if (stats.size === 0) return { ok: false, error: '空文件无法修复' }; const dir = path.dirname(file); const base = path.basename(file, path.extname(file)); const isImage = /\.(png|jpe?g|webp|bmp|tiff?|avif|jxl|gif)$/i.test(file); const outCopy = path.join(dir, `${base}_修复${path.extname(file)}`); const remux = await run(paths().ffmpeg, ['-y','-err_detect','ignore_err','-i',file,'-map','0','-c','copy',outCopy], { timeoutMs: 120000 }); let repaired = outCopy; let stage = 'remux'; const usable = (f) => { try { return fs.existsSync(f) && fs.statSync(f).size > 0; } catch { return false; } }; if (usable(outCopy)) { const verify = await run(paths().ffmpeg, ['-v','error','-i',outCopy,'-map','0:v:0','-f','null','-'], { timeoutMs: 120000 }); if (verify.ok && !damagePattern().test(stripMuxerDts(verify.stderr))) return { ok: true, repaired: outCopy, stage: 'remux' }; } try { fs.unlinkSync(outCopy); } catch {} const outEncode = isImage ? path.join(dir, `${base}_修复.png`) : path.join(dir, `${base}_修复.mp4`); const encArgs = isImage ? ['-y','-err_detect','ignore_err','-i',file,'-pix_fmt','yuv420p','-frames:v','1','-update','1',outEncode] : ['-y','-err_detect','ignore_err','-i',file,'-c:v','libx264','-preset','fast','-crf','23','-pix_fmt','yuv420p','-an',outEncode]; const enc = await run(paths().ffmpeg, encArgs, { timeoutMs: 300000 }); if (!usable(outEncode)) return { ok: false, error: cleanError(enc.stderr) || '修复失败：既无法重封装也无法重编码' }; const verify2 = await run(paths().ffmpeg, ['-v','error','-i',outEncode,'-map','0:v:0','-f','null','-'], { timeoutMs: 120000 }); if (!verify2.ok || damagePattern().test(stripMuxerDts(verify2.stderr))) { try { fs.unlinkSync(outEncode); } catch {} return { ok: false, error: '修复副本校验未通过，已丢弃' }; } return { ok: true, repaired: outEncode, stage: 'encode' }; } catch (e) { return { ok: false, error: e.message }; } });
+// PNG chunk 清洗：扔掉损坏的 eXIf/iCCP/tEXt 等 ancillary chunk，只保留 critical + tRNS
+// 解决 Pixiv 下载的 PNG 因 eXIf chunk TIFF header 损坏导致 ffmpeg PNG 解码器直接崩溃的问题
+function cleanPngChunks(buffer) {
+  const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (!buffer.slice(0, 8).equals(PNG_SIG)) return null;
+  const KEEP = new Set(['IHDR', 'PLTE', 'IDAT', 'IEND', 'tRNS']);
+  const out = [PNG_SIG];
+  let offset = 8;
+  while (offset + 8 <= buffer.length) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.slice(offset + 4, offset + 8).toString('ascii');
+    const chunkEnd = offset + 12 + length;
+    if (chunkEnd > buffer.length) break;
+    if (KEEP.has(type)) out.push(buffer.slice(offset, chunkEnd));
+    offset = chunkEnd;
+    if (type === 'IEND') break;
+  }
+  return Buffer.concat(out);
+}
+ipcMain.handle('clean-png-metadata', (_, file) => {
+  try {
+    if (!fs.existsSync(file)) return { ok: false, error: '文件不存在' };
+    const buf = fs.readFileSync(file);
+    const cleaned = cleanPngChunks(buf);
+    if (!cleaned) return { ok: false, error: '不是有效的 PNG 文件' };
+    if (cleaned.length === buf.length) return { ok: false, error: '无需清洗（无 ancillary chunk）' };
+    const tmpDir = path.join(os.tmpdir(), 'ffmpeg-studio-clean');
+    fs.mkdirSync(tmpDir, { recursive: true });
+    const out = path.join(tmpDir, `clean_${Date.now()}_${path.basename(file)}`);
+    fs.writeFileSync(out, cleaned);
+    return { ok: true, path: out, originalSize: buf.length, cleanedSize: cleaned.length };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
 ipcMain.handle('capabilities', async () => {
   const [formats, codecs, filters, hwaccels] = await Promise.all([
     run(paths().ffmpeg, ['-hide_banner','-formats']), run(paths().ffmpeg, ['-hide_banner','-codecs']), run(paths().ffmpeg, ['-hide_banner','-filters']), run(paths().ffmpeg, ['-hide_banner','-hwaccels'])
@@ -176,6 +218,32 @@ ipcMain.handle('run-ffmpeg', (event, args, metadata = {}) => new Promise((resolv
   child.on('error', (error) => resolve({ ok: false, error: error.message }));
   child.on('close', (code) => resolve({ ok: code === 0, code, stderr }));
 }));
+
+// CPU 使用率监控：采样两次 CPU 时间差计算总占用百分比
+let _cpuPrev = null;
+ipcMain.handle('get-cpu-usage', () => {
+  const cpus = os.cpus();
+  const idle = cpus.reduce((s, c) => s + c.times.idle, 0);
+  const total = cpus.reduce((s, c) => s + Object.values(c.times).reduce((a, b) => a + b, 0), 0);
+  if (_cpuPrev) {
+    const idleDiff = idle - _cpuPrev.idle;
+    const totalDiff = total - _cpuPrev.total;
+    const pct = totalDiff > 0 ? Math.round((1 - idleDiff / totalDiff) * 100) : 0;
+    _cpuPrev = { idle, total };
+    return Math.max(0, Math.min(100, pct));
+  }
+  _cpuPrev = { idle, total };
+  return -1; // 第一次采样无对比数据，返回 -1 表示无效
+});
+
+// 强制杀掉所有 ffmpeg 进程
+ipcMain.handle('kill-all-ffmpeg', () => {
+  try {
+    const { execSync } = require('child_process');
+    execSync('taskkill /F /IM ffmpeg.exe /T 2>nul', { windowsHide: true });
+    return true;
+  } catch { return false; }
+});
 
 app.whenReady().then(() => { loadSettings(); createWindow(); app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); }); });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

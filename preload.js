@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('ffmpeg', {
   listAudio: (directory) => ipcRenderer.invoke('list-audio', directory),
   checkIntegrity: (payload) => ipcRenderer.invoke('check-integrity', payload),
   repairFile: (payload) => ipcRenderer.invoke('repair-file', payload),
+  cleanPngMetadata: (file) => ipcRenderer.invoke('clean-png-metadata', file),
   pathKind: (target) => ipcRenderer.invoke('path-kind', target),
   fileSize: (target) => ipcRenderer.invoke('file-size', target),
   deleteFile: (target) => ipcRenderer.invoke('delete-file', target),
@@ -26,6 +27,8 @@ contextBridge.exposeInMainWorld('ffmpeg', {
   probe: (file) => ipcRenderer.invoke('probe', file),
   capabilities: () => ipcRenderer.invoke('capabilities'),
   run: (args, metadata) => ipcRenderer.invoke('run-ffmpeg', args, metadata),
+  getCpuUsage: () => ipcRenderer.invoke('get-cpu-usage'),
+  killAllFfmpeg: () => ipcRenderer.invoke('kill-all-ffmpeg'),
   onProgress: (callback) => ipcRenderer.on('ffmpeg-progress', (_, progress) => callback(progress)),
   onLog: (callback) => ipcRenderer.on('ffmpeg-log', (_, text) => callback(text))
 });

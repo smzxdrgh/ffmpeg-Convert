@@ -1,20 +1,20 @@
 /* FFMPEG Workbench renderer — 图片转换(8格式质量体系) / 动图工坊 / 媒体互转 / 音频 / 滤镜 / 能力 / 偏好设置 */
 const state = { files: [], gifFiles: [], mediaFiles: [], audioFiles: [], meta: new Map(), mediaStatus: new Map(), audioStatus: new Map(), format: 'webp', mediaFormat: 'gif', outputDir: '', running: false, batchRunning: false, mediaRunning: false, audioRunning: false, convertPartial: false, mediaPartial: false, audioPartial: false, activeFile: null, activeJobs: new Map(), nextJobId: 1, coreCount: 1, capData: null, capTab: 'formats', filterFile: '', activeFilter: null, filterOut: 'filtered', savedSettings: null, fmtParams: {}, media: { gif: { colors: 205, dither: 'sierra2_4a', loop: true, fps: 15, width: '' }, webp: { lossless: true, quality: 100, compression_level: 6, loop: true, fps: 15, width: '' }, apng: { fps: 15, width: '' }, video: { vcodec: 'libx264', crf: 26, preset: 'veryslow', fps: '', width: '', height: '', acodec: 'aac', abitrate: '128k' } } };
-setTimeout(() => { const selector = $('threads'); if (!selector) return; selector.previousElementSibling.textContent = 'CPU 处理模式'; selector.innerHTML = '<option value="0">自动（使用多核）</option><option value="1">1 核</option><option value="2">2 核</option><option value="4">4 核</option><option value="8">8 核</option><option value="16">16 核</option>'; const custom = document.createElement('input'); custom.id = 'custom-cores'; custom.type = 'number'; custom.min = '2'; custom.max = '256'; custom.value = '2'; custom.placeholder = '自定义并行核心数'; custom.className = 'custom-cores'; selector.insertAdjacentElement('afterend', custom); const readout = document.createElement('small'); readout.id = 'core-readout'; readout.className = 'policy-note acceleration-note'; readout.textContent = '正在检测逻辑核心数…'; custom.insertAdjacentElement('afterend', readout); const update = () => { custom.disabled = selector.value !== 'custom'; }; selector.onchange = update; update(); window.ffmpeg.cpuCount().then((count) => { state.coreCount = count; readout.textContent = `检测到 ${count} 个逻辑核心；自动多核会先并行处理静态图片，再单核处理动图。`; }).catch(() => { readout.textContent = '无法检测核心数，默认使用 1 个并行任务。'; }); }, 0);
+setTimeout(() => { const selector = $('threads'); if (!selector) return; selector.previousElementSibling.textContent = 'CPU 处理模式'; selector.innerHTML = '<option value="0">自动（使用多核）</option><option value="dynamic">动态自适应（CPU 未满自动加）</option><option value="1">1 核</option><option value="2">2 核</option><option value="4">4 核</option><option value="8">8 核</option><option value="16">16 核</option>'; const custom = document.createElement('input'); custom.id = 'custom-cores'; custom.type = 'number'; custom.min = '2'; custom.max = '256'; custom.value = '2'; custom.placeholder = '自定义并行核心数'; custom.className = 'custom-cores'; selector.insertAdjacentElement('afterend', custom); const dynCfg = document.createElement('div'); dynCfg.id = 'dynamic-config'; dynCfg.style.cssText = 'display:none;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0;padding:8px;border:1px solid #444;border-radius:6px;'; dynCfg.innerHTML = '<small style="grid-column:1/-1;opacity:0.7;">动态调度参数</small><label>最大并发<input type="number" id="dyn-max" value="0" min="1" max="64"><small>0=核心数</small></label><label>CPU上限%<input type="number" id="dyn-high" value="92" min="50" max="100"><small>高于此值停加</small></label><label>CPU下限%<input type="number" id="dyn-low" value="78" min="10" max="90"><small>低于此值加进程</small></label><label>冷却(秒)<input type="number" id="dyn-cooldown" value="5" min="1" max="60"></label>'; selector.insertAdjacentElement('afterend', dynCfg); const readout = document.createElement('small'); readout.id = 'core-readout'; readout.className = 'policy-note acceleration-note'; readout.textContent = '正在检测逻辑核心数…'; dynCfg.insertAdjacentElement('afterend', readout); const update = () => { custom.disabled = selector.value !== 'custom'; dynCfg.style.display = selector.value === 'dynamic' ? 'grid' : 'none'; }; selector.onchange = update; update(); window.ffmpeg.cpuCount().then((count) => { state.coreCount = count; readout.textContent = `检测到 ${count} 个逻辑核心；自动多核会先并行处理静态图片，再单核处理动图。`; }).catch(() => { readout.textContent = '无法检测核心数，默认使用 1 个并行任务。'; }); }, 0);
 const $ = (id) => document.getElementById(id);
 const log = (message, error = false) => { $('log').textContent = message; $('log').className = `log${error ? ' error' : ''}`; };
 const ext = (file) => file.split(/[\\/]/).pop().split('.').pop().toUpperCase();
 const name = (file) => file.split(/[\\/]/).pop();
 const esc = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 /* ---- 文件格式过滤：每个输入队列可勾选忽略哪些格式（默认全部接收） ---- */
-const FILTER_GROUPS = { image: ['webp', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tif', 'tiff', 'avif', 'jxl'], media: ['gif', 'webp', 'apng', 'mp4', 'webm', 'mkv', 'mov', 'avi'], audio: ['mp3', 'wav', 'flac', 'm4a', 'aac', 'ogg', 'opus'] };
+const FILTER_GROUPS = { image: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'bmp', 'tif', 'tiff', 'jxl'], media: ['mp4', 'gif', 'webp', 'webm', 'mkv', 'mov', 'avi', 'apng'], audio: ['mp3', 'aac', 'm4a', 'wav', 'flac', 'ogg', 'opus'] };
 state.ignored = { image: new Set(), media: new Set(), audio: new Set() };
 function renderFilterBars() { Object.keys(FILTER_GROUPS).forEach((kind) => { const bar = $(`${kind}-filter-bar`); if (!bar) return; bar.innerHTML = '<span class="filter-title">忽略格式</span>' + FILTER_GROUPS[kind].map((e) => `<label class="check filter-chip"><input type="checkbox" data-ignore="${kind}" data-ext="${e}"> ${e.toUpperCase()}</label>`).join('') + '<small class="filter-hint">勾选后忽略该格式（默认全部接收）</small>'; }); document.querySelectorAll('[data-ignore]').forEach((cb) => cb.onchange = () => { const kind = cb.dataset.ignore; const e = cb.dataset.ext; cb.checked ? state.ignored[kind].add(e) : state.ignored[kind].delete(e); applyFilterToQueues(kind); }); }
 function isIgnored(file, kind) { return state.ignored[kind].has(ext(file).toLowerCase()); }
 function filterFiles(files, kind) { const kept = []; const ignored = []; for (const f of files) (isIgnored(f, kind) ? ignored : kept).push(f); return { kept, ignored }; }
 function applyFilterToQueues(kind) { if (kind === 'image') { const r = filterFiles(state.files, 'image'); if (r.ignored.length) { state.files = r.kept; state.meta = new Map(); renderFiles(state.files, 'file-list', 'file-count'); log(`已按过滤规则移除 ${r.ignored.length} 个被忽略格式的文件。`); } } else if (kind === 'media') { const r = filterFiles(state.mediaFiles, 'media'); if (r.ignored.length) { state.mediaFiles = r.kept; renderSimpleList(state.mediaFiles, 'media-list', 'media-count'); log(`已按过滤规则移除 ${r.ignored.length} 个被忽略格式的文件。`); } } else if (kind === 'audio') { const r = filterFiles(state.audioFiles, 'audio'); if (r.ignored.length) { state.audioFiles = r.kept; renderSimpleList(state.audioFiles, 'audio-list', 'audio-count'); log(`已按过滤规则移除 ${r.ignored.length} 个被忽略格式的文件。`); } } }
 /* ---- 加速面板（注入到图片转换输出区） ---- */
-const accelerationPanel = document.createElement('div'); accelerationPanel.className = 'panel acceleration-panel'; accelerationPanel.innerHTML = '<div class="panel-title"><span class="eyebrow">PROCESS ACCELERATION</span><span class="pill">CPU / GPU</span></div><label>CPU 线程</label><select id="threads"><option value="0">自动（使用多核）</option><option value="1">1 核</option><option value="2">2 核</option><option value="4">4 核</option><option value="8">8 核</option><option value="16">16 核</option></select><label>硬件加速</label><select id="hwaccel"><option value="">关闭（兼容性最佳）</option><option value="auto">自动选择可用 GPU</option><option value="cuda">CUDA / NVIDIA</option><option value="d3d11va">D3D11VA / DirectX</option><option value="qsv">Intel Quick Sync</option><option value="dxva2">DXVA2</option></select><small class="policy-note acceleration-note">线程 0 由 FFmpeg 自动使用多核。GPU 主要加速解码与滤镜，图片编码仍取决于具体编码器。</small>'; const destinationPanel = document.querySelector('#view-convert .panel.compact'); destinationPanel.parentNode.insertBefore(accelerationPanel, destinationPanel);
+const accelerationPanel = document.createElement('div'); accelerationPanel.className = 'panel acceleration-panel'; accelerationPanel.innerHTML = '<div class="panel-title"><span class="eyebrow">PROCESS ACCELERATION</span><span class="pill">CPU / GPU</span></div><label>CPU 线程</label><select id="threads"><option value="0">自动（使用多核）</option><option value="1">1 核</option><option value="2">2 核</option><option value="4">4 核</option><option value="8">8 核</option><option value="16">16 核</option></select><label>硬件加速</label><select id="hwaccel"><option value="">关闭（兼容性最佳）</option><option value="auto">自动选择可用 GPU</option><option value="cuda">CUDA / NVIDIA</option><option value="d3d11va">D3D11VA / DirectX</option><option value="qsv">Intel Quick Sync</option><option value="dxva2">DXVA2</option></select><small class="policy-note acceleration-note">图片编解码（webp/avif/jxl/png/jpg）为纯 CPU，无 GPU 实现，GPU 占用恒为 0% 属正常。GPU 仅加速：①视频解码（mp4/webm 等读取时）；②视频编码（媒体互转选 h264_nvenc/hevc_nvenc/av1_nvenc/h264_qsv 时）。</small>'; const destinationPanel = document.querySelector('#view-convert .panel.compact'); destinationPanel.parentNode.insertBefore(accelerationPanel, destinationPanel);
 function rational(value) { if (!value || value === '0/0') return 0; const [a, b] = String(value).split('/').map(Number); return b ? a / b : a || 0; }
 function processLabel(info) { if (!info || !info.job || info.job === 'pending') return '<span class="process-status pending">待处理</span>'; if (info.job === 'processing') return `<span class="process-status active">处理中 ${Math.round(info.progress || 0)}%</span>`; if (info.job === 'done') return `<span class="process-status success">已输出 · 缩小 ${info.saved}%${info.deleted ? ' · 原文件已删除' : ''}</span>`; if (info.job === 'rejected') return `<span class="process-status rejected">保留原文件 · 输出文件为原文件的 ${info.outputRatio}%</span>`; return '<span class="process-status rejected">处理失败 · 保留原文件</span>'; }
 function metadataLabel(file) { const info = state.meta.get(file); if (!info || info.status === 'probing') return '<span class="probe-badge probing">识别中</span>'; if (info.status === 'error') return '<span class="probe-badge error-badge">识别失败</span>'; const type = info.animated ? '动图' : '图片'; const frames = info.frames > 1 ? `${info.frames} 帧` : '单帧'; const fps = info.fps ? `${info.fps.toFixed(2)} fps` : ''; return `<span class="probe-badge ${info.animated ? 'animated' : ''}">${type}</span><small>${info.width || '?'} × ${info.height || '?'} · ${frames}${fps ? ` · ${fps}` : ''}</small>${processLabel(info)}`; }
@@ -23,9 +23,20 @@ function renderFiles(list, target, countId) { const el = $(target); $(countId).t
 function renderSimpleList(list, target, countId) { const el = $(target); $(countId).textContent = list.length; el.classList.toggle('empty', !list.length); const MAX = 500; const shown = list.slice(0, MAX); const extra = list.length - shown.length; const rows = shown.map((file, index) => `<div class="file-row"><div class="file-type">${esc(ext(file))}</div><div class="file-info"><strong>${esc(name(file))}</strong><small>${esc(file)}</small></div><button class="remove" data-simple-remove="${target}" data-index="${index}">×</button></div>`).join(''); const overflow = extra > 0 ? `<div class="empty-state" style="padding:10px">… 另有 ${extra} 个文件未逐一显示（最多展示 ${MAX} 行，全部仍会被处理）</div>` : ''; el.innerHTML = list.length ? rows + overflow : `<div class="empty-state">还没有文件<br><small>${target === 'media-list' ? '可添加 GIF / WebP 动图 / APNG / MP4 / MKV / WebM / MOV / AVI' : '可添加 MP3 / WAV / FLAC / M4A / OGG 等'}</small></div>`; }
 document.addEventListener('click', (event) => { const simple = event.target.closest('[data-simple-remove]'); if (simple) { const key = simple.dataset.simpleRemove === 'media-list' ? 'mediaFiles' : 'audioFiles'; state[key].splice(Number(simple.dataset.index), 1); renderSimpleList(state[key], simple.dataset.simpleRemove, key === 'mediaFiles' ? 'media-count' : 'audio-count'); return; } const button = event.target.closest('[data-remove]'); if (!button) return; const list = button.dataset.remove === 'gif-list' ? 'gifFiles' : 'files'; state[list].splice(Number(button.dataset.index), 1); renderFiles(state.files, 'file-list', 'file-count'); renderFiles(state.gifFiles, 'gif-list', 'gif-count'); });
 async function inspect(file) { state.meta.set(file, { status: 'probing', job: 'pending' }); renderFiles(state.files, 'file-list', 'file-count'); const result = await window.ffmpeg.probe(file); if (!result.ok) state.meta.set(file, { status: 'error', job: 'error', error: result.error || result.stderr }); else { try { const data = JSON.parse(result.stdout); const stream = (data.streams || [])[0] || {}; const format = data.format || {}; const frames = Number(stream.nb_frames || stream.nb_read_frames || stream.nb_read_packets || 0); const detectedFps = rational(stream.avg_frame_rate || stream.r_frame_rate); const duration = Number(format.duration || (frames > 0 && detectedFps > 0 ? frames / detectedFps : 0)); const codec = String(stream.codec_name || '').toLowerCase(); const formatName = String(format.format_name || '').toLowerCase(); const webpAnimation = codec === 'webp_anim' || formatName.includes('webp_anim'); const animated = webpAnimation || frames > 1 || (duration > 0.25 && detectedFps > 1); const fps = animated ? detectedFps : 0; state.meta.set(file, { status: 'ready', job: 'pending', animated, frames, duration, fps, width: stream.width, height: stream.height, codec: stream.codec_name, pixFmt: stream.pix_fmt, format: format.format_name }); } catch (error) { state.meta.set(file, { status: 'error', job: 'error', error: error.message }); } } renderFiles(state.files, 'file-list', 'file-count'); }
-async function addFiles(files, type = 'image') { const target = type === 'gif' ? 'gifFiles' : 'files'; let list = files; if (type === 'image') { const r = filterFiles(files, 'image'); list = r.kept; if (r.ignored.length) log(`已忽略 ${r.ignored.length} 个被勾选过滤的格式文件。`); } state[target] = [...new Set([...state[target], ...list])]; renderFiles(state.files, 'file-list', 'file-count'); renderFiles(state.gifFiles, 'gif-list', 'gif-count'); if (type === 'image') { for (const file of list) await inspect(file); if (state.files[0]) { $('advanced-source').textContent = state.files[0]; updateCommand(); } } }
+async function addFiles(files, type = 'image') { const target = type === 'gif' ? 'gifFiles' : 'files'; let list = files;
+  if (type === 'image') {
+    const adv = await applyAdvancedFilter(files, 'convert');
+    list = adv.kept;
+    if (adv.dropped) log(`高级过滤：丢弃 ${adv.dropped} 个不符合规则的文件。`);
+    if (!(advFilter.enabled && advFilter.targets.convert)) {
+      const r = filterFiles(files, 'image');
+      list = r.kept;
+      if (r.ignored.length) log(`已忽略 ${r.ignored.length} 个被勾选过滤的格式文件。`);
+    }
+  }
+  state[target] = [...new Set([...state[target], ...list])]; renderFiles(state.files, 'file-list', 'file-count'); renderFiles(state.gifFiles, 'gif-list', 'gif-count'); if (type === 'image') { for (const file of list) await inspect(file); if (state.files[0]) { $('advanced-source').textContent = state.files[0]; updateCommand(); } } }
 /* ---- 导航 ---- */
-const pageMeta = { convert: ['图片转换', '任意图片格式互转，统一质量与速度比例尺。'], gif: ['动图工坊', '让一组静态画面，拥有自己的时间线。'], media: ['媒体互转', '动图与视频之间任意互转，统一质量比例尺。'], audio: ['音频转换', '常见音频格式与码率互转。'], filter: ['滤镜工作台', '给媒体加一层滤镜。'], advanced: ['高级命令', '直接调用 FFmpeg 参数，保持完整控制力。'], capabilities: ['能力扫描', '本机引擎已安装能力的可视化索引。'], integrity: ['完整性检查', '检查文件是否损坏，损坏文件可罗列并删除。'], settings: ['偏好设置', '引擎路径与默认配置管理。'], 'folder-batch': ['文件夹批处理', '指定文件夹后分批读取处理，避免数十万文件同时加载导致黑屏。'] };
+const pageMeta = { convert: ['图片转换', '任意图片格式互转，统一质量与速度比例尺。'], gif: ['动图工坊', '让一组静态画面，拥有自己的时间线。'], media: ['媒体互转', '动图与视频之间任意互转，统一质量比例尺。'], audio: ['音频转换', '常见音频格式与码率互转。'], filter: ['滤镜工作台', '给媒体加一层滤镜。'], advanced: ['高级命令', '直接调用 FFmpeg 参数，保持完整控制力。'], capabilities: ['能力扫描', '本机引擎已安装能力的可视化索引。'], integrity: ['完整性检查', '检查文件是否损坏，损坏文件可罗列并删除。'], settings: ['偏好设置', '引擎路径与默认配置管理。'], 'folder-batch': ['文件夹批处理', '指定文件夹后分批读取处理，避免数十万文件同时加载导致黑屏。'], 'adv-filter': ['高级过滤', '独立文件过滤规则；启用后覆盖其他所有过滤，可导入未知扩展名。'] };
 document.querySelectorAll('.nav').forEach((button) => button.onclick = () => { document.querySelectorAll('.nav').forEach((item) => item.classList.remove('active')); button.classList.add('active'); document.querySelectorAll('.view').forEach((item) => item.classList.remove('active-view')); $('view-' + button.dataset.view).classList.add('active-view'); const meta = pageMeta[button.dataset.view]; $('page-title').textContent = meta[0]; $('page-subtitle').textContent = meta[1]; });
 /* ---- 侧边栏收起 / 展开 ---- */
 const sidebarToggle = $('sidebar-toggle');
@@ -100,7 +111,11 @@ function updateCommand() { $('command-preview').textContent = `ffmpeg ${state.fi
 async function run(args, label, metadata = {}) { const jobId = metadata.jobId || `job-${state.nextJobId++}`; state.activeJobs.set(jobId, metadata.file || label); state.running = true; log(label); const result = await window.ffmpeg.run(args, { ...metadata, jobId }); state.activeJobs.delete(jobId); state.running = state.activeJobs.size > 0; log(result.ok ? label + ' 完成。' : (result.error || '处理失败'), !result.ok); return result; }
 function outputPath(input, format, index = 0) { const sourceBase = input.replace(/\.[^.\\/]+$/, ''); const base = sourceBase.split(/[\\/]/).pop(); const sourceExtension = (input.match(/\.([^.\\/]+)$/) || [,''])[1].toLowerCase(); const mode = $('filename-mode').value; let targetBase = base; if (mode === 'custom') { const template = $('filename-template').value.trim() || '{name}'; targetBase = template.replaceAll('{name}', base).replaceAll('{index}', String(index + 1).padStart(2, '0')).replace(/[<>:"/\\|?*]/g, '_').trim(); if (state.files.length > 1 && !template.includes('{index}')) targetBase += `_${String(index + 1).padStart(2, '0')}`; } if (!targetBase) targetBase = `${base}_converted`; if (sourceExtension === format.toLowerCase() && mode === 'original') targetBase = `${targetBase}_converted`; const directory = state.outputDir || sourceBase.substring(0, sourceBase.length - base.length); return `${state.outputDir ? `${directory}\\` : directory}${targetBase}.${format}`; }
 function formatBytes(bytes) { if (bytes < 1024) return `${bytes} B`; if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`; return `${(bytes / 1024 / 1024).toFixed(2)} MB`; }
-async function validateOutput(input, output) { const sourceSize = await window.ffmpeg.fileSize(input); const outputSize = await window.ffmpeg.fileSize(output); if (sourceSize < 0 || outputSize < 0) return { accepted: false, reason: '无法读取转换前后文件大小', sourceSize, outputSize }; const ratio = outputSize / sourceSize; const target = Number($('size-target').value) / 100; const sizeGate = $('size-gate').checked; const tooLarge = outputSize > sourceSize; const belowTarget = ratio <= 1 - target; if (tooLarge || (sizeGate && !belowTarget)) { await window.ffmpeg.deleteFile(output); return { accepted: false, sourceSize, outputSize, ratio, reason: tooLarge ? '输出文件大于原文件' : `未达到缩小 ${$('size-target').value}% 的目标` }; } return { accepted: true, sourceSize, outputSize, ratio }; }
+async function validateOutput(input, output) { const sourceSize = await window.ffmpeg.fileSize(input); const outputSize = await window.ffmpeg.fileSize(output); if (sourceSize < 0 || outputSize < 0) return { accepted: false, reason: '无法读取转换前后文件大小', sourceSize, outputSize }; const ratio = outputSize / sourceSize; const target = Number($('size-target').value) / 100; const sizeGate = $('size-gate').checked; const belowTarget = ratio <= 1 - target;
+  // 只有勾选「仅保留达到压缩目标的输出」才拒绝变大 / 不达目标；未勾选时任何输出都接受
+  if (sizeGate && !belowTarget) { await window.ffmpeg.deleteFile(output); return { accepted: false, sourceSize, outputSize, ratio, reason: outputSize > sourceSize ? `输出文件大于原文件（${(ratio*100).toFixed(0)}%），已按压缩目标丢弃` : `未达到缩小 ${$('size-target').value}% 的目标（实际 ${((1-ratio)*100).toFixed(1)}%）` }; }
+  return { accepted: true, sourceSize, outputSize, ratio };
+}
 function scaleArgs() { const width = $('width').value.trim(); const height = $('height').value.trim(); if (!width && !height) return []; if ($('keep-ratio').checked && width && height) return ['-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease`]; return ['-vf', `scale=${width || -2}:${height || -2}`]; }
 function fmtArgs(format, p, animated) { const out = []; switch (format) {
   case 'webp': out.push('-c:v', animated ? 'libwebp_anim' : 'libwebp'); if (p.lossless) out.push('-lossless', '1', '-q:v', '100'); else out.push('-lossless', '0', '-q:v', String(p.quality)); out.push('-compression_level', String(p.compression_level), '-loop', '0'); break;
@@ -112,10 +127,35 @@ function fmtArgs(format, p, animated) { const out = []; switch (format) {
   case 'tiff': out.push('-c:v', 'tiff', '-compression_algo', p.compression || 'deflate'); break;
   case 'jpegxl': out.push('-c:v', 'libjxl'); if (p.lossless) out.push('-distance', '0'); else out.push('-distance', String(p.distance)); out.push('-effort', String(p.effort)); break;
 } return out; }
-function imageArgs(input, output, info) { const format = state.format; const animated = Boolean(info && info.animated); const args = ['-y']; const threads = state.currentThreads || '1'; const hwaccel = $('hwaccel')?.value || ''; args.push('-threads', threads); if (hwaccel) args.push('-hwaccel', hwaccel); args.push('-i', input); const staticOnly = !animated || ['jpg', 'png', 'bmp', 'tiff'].includes(format); if (staticOnly) args.push('-frames:v', '1'); const scaling = scaleArgs(); if (scaling.length && format !== 'gif') args.push(...scaling); if (animated && !['jpg', 'png', 'bmp', 'tiff'].includes(format)) args.push('-fps_mode', 'passthrough'); args.push(...fmtArgs(format, state.fmtParams[format] || {}, animated)); args.push(output); return args; }
-async function processOne(input, index, threadCount) { if (!state.meta.get(input) || state.meta.get(input).status !== 'ready') await inspect(input); const info = state.meta.get(input); if (info.status === 'error') { info.job = 'error'; renderFiles(state.files, 'file-list', 'file-count'); log(`${name(input)} 无法识别，已跳过。`, true); return; } const mode = info.animated ? '动图' : '图片'; const timing = info.animated ? `，保留原始 ${info.fps ? info.fps.toFixed(2) : '可变'} fps 帧间隔` : ''; const output = outputPath(input, state.format, index); info.job = 'processing'; info.progress = 0; state.currentThreads = String(info.animated ? 1 : threadCount); renderFiles(state.files, 'file-list', 'file-count'); const result = await run(imageArgs(input, output, info), `正在转换 ${name(input)}（${mode}${timing}）`, { duration: info.duration, file: input, jobId: `file-${index}-${Date.now()}` }); if (!result || !result.ok) { info.job = 'error'; renderFiles(state.files, 'file-list', 'file-count'); return; } info.progress = 100; const check = await validateOutput(input, output); if (!check.accepted) { info.job = 'rejected'; info.outputRatio = check.sourceSize > 0 && check.outputSize >= 0 ? ((check.outputSize / check.sourceSize) * 100).toFixed(0) : '?'; renderFiles(state.files, 'file-list', 'file-count'); log(`${name(input)}：${check.reason}（原文件 ${formatBytes(check.sourceSize)}，输出 ${formatBytes(check.outputSize)}，已丢弃输出）`, true); return; } const saved = ((1 - check.ratio) * 100).toFixed(1); info.job = 'done'; info.saved = saved; info.deleted = false; renderFiles(state.files, 'file-list', 'file-count'); if ($('delete-original').checked) { const deleted = await window.ffmpeg.deleteFile(input); if (!deleted.ok) { log(`${name(input)} 已输出并缩小 ${saved}%，但原文件删除失败：${deleted.error}`, true); return; } info.deleted = true; renderFiles(state.files, 'file-list', 'file-count'); log(`${name(input)} 完成：${formatBytes(check.sourceSize)} → ${formatBytes(check.outputSize)}，缩小 ${saved}%，原文件已删除。`); } else log(`${name(input)} 完成：${formatBytes(check.sourceSize)} → ${formatBytes(check.outputSize)}，缩小 ${saved}%。`); }
-async function runBatch(_files) { if (state.batchRunning) return log('已有批处理正在运行，请等待当前队列完成。', true); const files = (_files && _files.length) ? _files : [...state.files]; if (!files.length) return log('请先添加图片文件。', true); saveConvertProfile(); state.batchRunning = true; const threadMode = $('threads')?.value || 'single'; const single = threadMode === 'single'; const detected = state.coreCount || 1; const custom = Math.max(1, Number($('custom-cores')?.value || detected)); const parallel = Math.min(detected, threadMode === 'custom' ? custom : detected); const readyInOrder = []; const stillQueue = []; const animationQueue = []; let probeDone = false; let active = 0; let wakeResolve = null; const signal = () => { if (wakeResolve) { const resolve = wakeResolve; wakeResolve = null; resolve(); } }; const waitForSignal = () => new Promise((resolve) => { wakeResolve = resolve; }); const launch = (item) => { active += 1; processOne(item.file, item.index, item.info.animated ? 1 : 1).catch((error) => { item.info.job = 'error'; log(`${name(item.file)} 处理异常：${error.message}`, true); renderFiles(state.files, 'file-list', 'file-count'); }).finally(() => { active -= 1; signal(); }); }; const scheduler = async () => { while (state.batchRunning) { if (single) { if (active === 0 && readyInOrder.length) launch(readyInOrder.shift()); } else { while (active < parallel && stillQueue.length) launch(stillQueue.shift()); if (active === 0 && stillQueue.length === 0 && animationQueue.length) launch(animationQueue.shift()); } if (probeDone && active === 0 && (single ? readyInOrder.length === 0 : stillQueue.length === 0 && animationQueue.length === 0)) return; await waitForSignal(); } }; const schedulerTask = scheduler(); log(`开始增量识别：检测到 ${detected} 个逻辑核心，识别完成前也会持续处理已确认文件。`); for (const [index, file] of files.entries()) { if (!state.meta.get(file) || state.meta.get(file).status !== 'ready') await inspect(file); const info = state.meta.get(file); const item = { file, index, info }; if (single) readyInOrder.push(item); else if (info.animated) animationQueue.push(item); else stillQueue.push(item); signal(); } probeDone = true; log('识别完毕：后续按静态图片优先、多核静态处理、动图单核处理。'); signal(); await schedulerTask; const stopped = !state.batchRunning; state.batchRunning = false; if (stopped) { state.convertPartial = true; setRunPhase('convert', 'paused'); log(`批量处理已停止：已完成 ${state.files.filter((f) => state.meta.get(f)?.job === 'done').length}/${state.files.length}。可点「继续」或「重新开始」。`); } else { state.convertPartial = false; setRunPhase('convert', 'idle'); log(`批量处理完成：${state.files.length}/${state.files.length}`); } }
-async function runBatchBatched(_files) { const files = (_files && _files.length) ? _files : [...state.files]; if (!files.length) return log('请先添加图片文件。', true); saveConvertProfile(); state.batchRunning = true; const batchSize = Math.max(1, Math.min(100, Number($('convert-batch-size').value) || 5)); const total = files.length; let done = 0; let stoppedFlag = false; try { for (let i = 0; i < files.length && state.batchRunning; i += batchSize) { const batch = files.slice(i, i + batchSize); for (const [bi, file] of batch.entries()) { await processOne(file, i + bi, 1); done++; } renderFiles(state.files, 'file-list', 'file-count'); log(`分批转换：已完成 ${done}/${total}`); await new Promise((r) => setTimeout(r, 20)); } } finally { state.batchRunning = false; } stoppedFlag = done < total; if (stoppedFlag) { state.convertPartial = true; setRunPhase('convert', 'paused'); log(`分批转换已停止：${done}/${total}。可点「继续」或「重新开始」。`); } else { state.convertPartial = false; setRunPhase('convert', 'idle'); log(`分批转换完成：${done}/${total}`); } }
+function imageArgs(input, output, info) { const format = state.format; const animated = Boolean(info && info.animated); const args = ['-y']; const threads = state.currentThreads || '1'; args.push('-threads', threads); // 图片编解码器（libwebp/libaom-av1/libjxl/png/mjpeg）全是纯 CPU，-hwaccel 对图片无效，不传
+  args.push('-i', input); const staticOnly = !animated || ['jpg', 'png', 'bmp', 'tiff'].includes(format); if (staticOnly) args.push('-frames:v', '1'); const scaling = scaleArgs(); if (scaling.length && format !== 'gif') args.push(...scaling); if (animated && !['jpg', 'png', 'bmp', 'tiff'].includes(format)) args.push('-fps_mode', 'passthrough'); args.push(...fmtArgs(format, state.fmtParams[format] || {}, animated)); if (format === 'avif' && info && info.pixFmt) { const pf = String(info.pixFmt).toLowerCase(); const is16bit = pf.includes('16') || pf.includes('48') || pf.includes('64'); if (pf.includes('gray') || pf.includes('pal8')) args.push('-pix_fmt', is16bit ? 'yuv420p10le' : 'yuv420p'); } args.push(output); return args; }
+async function processOne(input, index, threadCount) { if (!state.meta.get(input) || state.meta.get(input).status !== 'ready') await inspect(input); const info = state.meta.get(input); if (info.status === 'error') { info.job = 'error'; renderFiles(state.files, 'file-list', 'file-count'); log(`${name(input)} 无法识别，已跳过。`, true); return; } const mode = info.animated ? '动图' : '图片'; const timing = info.animated ? `，保留原始 ${info.fps ? info.fps.toFixed(2) : '可变'} fps 帧间隔` : ''; const output = outputPath(input, state.format, index); info.job = 'processing'; info.progress = 0; state.currentThreads = String(info.animated ? 1 : threadCount); renderFiles(state.files, 'file-list', 'file-count'); if (info.animated && state.format === 'avif') log(`注意：${name(input)} 是动图，当前 ffmpeg 的 AVIF muxer 存在已知 bug，可能只输出第一帧（FFmpeg ticket #11667）。建议动图转 WebP/GIF/APNG。`, true); const result = await run(imageArgs(input, output, info), `正在转换 ${name(input)}（${mode}${timing}）`, { duration: info.duration, file: input, jobId: `file-${index}-${Date.now()}` });
+  // PNG 坏 EXIF chunk 自动清洗重试
+  if ((!result || !result.ok) && /\.png$/i.test(input) && result?.stderr && /exif|tiff header|invalid data|error number -1145393733|decode error rate/i.test(result.stderr)) {
+    log(`${name(input)}：PNG 元数据 chunk 损坏，自动清洗后重试…`, true);
+    try {
+      const cleaned = await window.ffmpeg.cleanPngMetadata(input);
+      if (cleaned.ok) {
+        const retryResult = await run(imageArgs(cleaned.path, output, info), `正在转换 ${name(input)}（已清洗元数据重试）`, { duration: info.duration, file: input, jobId: `file-${index}-${Date.now()}-retry` });
+        if (retryResult && retryResult.ok) { log(`${name(input)}：清洗元数据后转换成功。`); }
+        else { info.job = 'error'; renderFiles(state.files, 'file-list', 'file-count'); return; }
+      } else { info.job = 'error'; renderFiles(state.files, 'file-list', 'file-count'); return; }
+    } catch (e) { info.job = 'error'; renderFiles(state.files, 'file-list', 'file-count'); return; }
+  } else if ((!result || !result.ok) && /\.(gif|webp|apng|avif|jxl)$/i.test(input)) {
+    // GIF/WebP/动图：加 -err_detect ignore_err 重试一次（容错性强，但保险）
+    log(`${name(input)}：转换失败，加 -err_detect ignore_err 重试…`, true);
+    try {
+      const retryArgs = imageArgs(input, output, info);
+      const iIdx = retryArgs.indexOf('-i');
+      if (iIdx > 0) retryArgs.splice(iIdx, 0, '-err_detect', 'ignore_err');
+      else retryArgs.unshift('-err_detect', 'ignore_err');
+      const retryResult = await run(retryArgs, `正在转换 ${name(input)}（容错模式重试）`, { duration: info.duration, file: input, jobId: `file-${index}-${Date.now()}-retry` });
+      if (!retryResult || !retryResult.ok) { info.job = 'error'; renderFiles(state.files, 'file-list', 'file-count'); return; }
+      log(`${name(input)}：容错模式重试成功。`);
+    } catch (e) { info.job = 'error'; renderFiles(state.files, 'file-list', 'file-count'); return; }
+  } else if (!result || !result.ok) { info.job = 'error'; renderFiles(state.files, 'file-list', 'file-count'); return; } info.progress = 100; const check = await validateOutput(input, output); if (!check.accepted) { info.job = 'rejected'; info.outputRatio = check.sourceSize > 0 && check.outputSize >= 0 ? ((check.outputSize / check.sourceSize) * 100).toFixed(0) : '?'; renderFiles(state.files, 'file-list', 'file-count'); log(`${name(input)}：${check.reason}（原文件 ${formatBytes(check.sourceSize)}，输出 ${formatBytes(check.outputSize)}，已丢弃输出）`, true); return; } const saved = ((1 - check.ratio) * 100).toFixed(1); info.job = 'done'; info.saved = saved; info.deleted = false; renderFiles(state.files, 'file-list', 'file-count'); if ($('delete-original').checked) { const deleted = await window.ffmpeg.deleteFile(input); if (!deleted.ok) { log(`${name(input)} 已输出并缩小 ${saved}%，但原文件删除失败：${deleted.error}`, true); return; } info.deleted = true; renderFiles(state.files, 'file-list', 'file-count'); log(`${name(input)} 完成：${formatBytes(check.sourceSize)} → ${formatBytes(check.outputSize)}，缩小 ${saved}%，原文件已删除。`); } else log(`${name(input)} 完成：${formatBytes(check.sourceSize)} → ${formatBytes(check.outputSize)}，缩小 ${saved}%。`); }
+async function runBatch(_files) { if (state.batchRunning) return log('已有批处理正在运行，请等待当前队列完成。', true); const files = (_files && _files.length) ? _files : [...state.files]; if (!files.length) return log('请先添加图片文件。', true); saveConvertProfile(); state.batchRunning = true; const threadMode = $('threads')?.value || '0'; const isDynamic = threadMode === 'dynamic'; const single = threadMode === '1' && !isDynamic; const detected = state.coreCount || 1; const custom = Math.max(1, Number($('custom-cores')?.value || detected)); const parallel = isDynamic ? 2 : Math.min(detected, threadMode === 'custom' ? custom : detected === 0 ? detected : Number(threadMode) || detected); let maxActive = parallel; let lastBumpTime = 0; let cpuOverLimit = false; const readyInOrder = []; const stillQueue = []; const animationQueue = []; let probeDone = false; let active = 0; let wakeResolve = null; const signal = () => { if (wakeResolve) { const resolve = wakeResolve; wakeResolve = null; resolve(); } }; const waitForSignal = () => new Promise((resolve) => { wakeResolve = resolve; }); const checkCpuAndAdjust = async () => { if (!isDynamic || !stillQueue.length) return; if (active < 1) { const maxUser = Number($('dyn-max')?.value) || 0; const maxConcurrent = maxUser > 0 ? maxUser : detected; if (maxActive < Math.min(1, maxConcurrent)) { maxActive = Math.min(1, maxConcurrent); log(`动态调度：活跃 ${active} < 1，直接补位至 ${maxActive}`); signal(); } return; } const cpu = await window.ffmpeg.getCpuUsage(); if (cpu < 0) return; const maxUser = Number($('dyn-max')?.value) || 0; const maxConcurrent = maxUser > 0 ? maxUser : detected; const cpuHigh = Number($('dyn-high')?.value) || 92; const cpuLow = Number($('dyn-low')?.value) || 78; const cooldown = (Number($('dyn-cooldown')?.value) || 5) * 1000; if (cpu > cpuHigh) { cpuOverLimit = true; if (maxActive > 2) { maxActive -= 1; log(`动态调度：CPU ${cpu}% > ${cpuHigh}%，并发降至 ${maxActive}`); } } else if (cpu < cpuLow && maxActive < maxConcurrent && Date.now() - lastBumpTime > cooldown) { cpuOverLimit = false; maxActive += 1; lastBumpTime = Date.now(); log(`动态调度：CPU ${cpu}% < ${cpuLow}%，并发提升至 ${maxActive}（当前运行 ${active}，上限 ${maxConcurrent}）`); signal(); } else { cpuOverLimit = false; } }; const launch = (item) => { active += 1; processOne(item.file, item.index, item.info.animated ? 1 : 1).catch((error) => { item.info.job = 'error'; log(`${name(item.file)} 处理异常：${error.message}`, true); renderFiles(state.files, 'file-list', 'file-count'); }).finally(() => { active -= 1; signal(); if (isDynamic && cpuOverLimit) checkCpuAndAdjust(); }); }; const dynamicTimer = isDynamic ? setInterval(() => { if (!state.batchRunning) return clearInterval(dynamicTimer); checkCpuAndAdjust(); }, 3000) : null; const scheduler = async () => { while (state.batchRunning) { if (single) { if (active === 0 && readyInOrder.length) launch(readyInOrder.shift()); } else { while (active < maxActive && stillQueue.length) launch(stillQueue.shift()); if (active === 0 && stillQueue.length === 0 && animationQueue.length) launch(animationQueue.shift()); } if (probeDone && active === 0 && (single ? readyInOrder.length === 0 : stillQueue.length === 0 && animationQueue.length === 0)) return; await waitForSignal(); } }; const schedulerTask = scheduler(); log(isDynamic ? `动态自适应模式：初始并发 2，CPU < 75% 自动加进程，> 90% 自动减（上限 ${detected}）。` : `开始增量识别：检测到 ${detected} 个逻辑核心，并行 ${parallel}。`); for (const [index, file] of files.entries()) { if (!state.meta.get(file) || state.meta.get(file).status !== 'ready') await inspect(file); const info = state.meta.get(file); const item = { file, index, info }; if (single) readyInOrder.push(item); else if (info.animated) animationQueue.push(item); else stillQueue.push(item); signal(); } probeDone = true; log('识别完毕：静态图片优先并行，动图串行。'); signal(); await schedulerTask; if (dynamicTimer) clearInterval(dynamicTimer); const stopped = !state.batchRunning; state.batchRunning = false; if (stopped) { state.convertPartial = true; setRunPhase('convert', 'paused'); log(`批量处理已停止：已完成 ${state.files.filter((f) => state.meta.get(f)?.job === 'done').length}/${state.files.length}。可点「继续」或「重新开始」。`); } else { state.convertPartial = false; setRunPhase('convert', 'idle'); log(`批量处理完成：${state.files.length}/${state.files.length}`); } }
+async function runBatchBatched(_files) { const files = (_files && _files.length) ? _files : [...state.files]; if (!files.length) return log('请先添加图片文件。', true); saveConvertProfile(); state.batchRunning = true; const threadMode = $('threads')?.value || '0'; const isDynamic = threadMode === 'dynamic'; const detected = state.coreCount || 1; let maxActive = isDynamic ? 2 : Math.max(1, Math.min(100, Number($('convert-batch-size').value) || 5)); const total = files.length; let done = 0; let stoppedFlag = false; const dynTimer = isDynamic ? setInterval(async () => { if (!state.batchRunning) return; const cpu = await window.ffmpeg.getCpuUsage(); if (cpu < 70 && maxActive < detected) { maxActive += 1; log(`动态调度：CPU ${cpu}% < 70%，并发提升至 ${maxActive}`); } else if (cpu > 92 && maxActive > 2) { maxActive -= 1; } }, 3000) : null; try { const statics = files.filter(f => !state.meta.get(f)?.animated); const anims = files.filter(f => state.meta.get(f)?.animated); let idx = 0; const running = new Set(); while ((idx < statics.length || running.size > 0) && state.batchRunning) { while (running.size < maxActive && idx < statics.length) { const f = statics[idx]; const i = idx; idx += 1; const p = processOne(f, i, 1).finally(() => { running.delete(p); done++; renderFiles(state.files, 'file-list', 'file-count'); }); running.add(p); } if (running.size > 0) await Promise.race(running); } for (const f of anims) { if (!state.batchRunning) break; await processOne(f, idx++, 1); done++; renderFiles(state.files, 'file-list', 'file-count'); } log(`转换完成：${done}/${total}`); } finally { state.batchRunning = false; if (dynTimer) clearInterval(dynTimer); } stoppedFlag = done < total; if (stoppedFlag) { state.convertPartial = true; setRunPhase('convert', 'paused'); log(`已停止：${done}/${total}。可点「继续」或「重新开始」。`); } else { state.convertPartial = false; setRunPhase('convert', 'idle'); log(`全部完成：${done}/${total}`); } }
 $('run-convert').onclick = () => { if (state.batchRunning) { if ($('convert-batch').checked) { state.batchRunning = false; state.convertPartial = true; setRunPhase('convert', 'paused'); log('正在停止…当前批结束后停止。'); } else log('已有批处理正在运行，请等待当前队列完成。', true); return; } if (!state.files.length) return log('请先添加图片文件。', true); state.convertPartial = false; if ($('convert-batch').checked) runBatchBatched(); else runBatch(); };
 $('resume-convert').onclick = () => { const pending = state.files.filter((f) => { const j = state.meta.get(f)?.job; return !j || !['done', 'rejected', 'error'].includes(j); }); if (!pending.length) { state.convertPartial = false; setRunPhase('convert', 'idle'); return log('没有未完成的文件（全部已处理）。'); } state.convertPartial = false; for (const f of pending) { const m = state.meta.get(f); if (m) m.job = 'pending'; } if ($('convert-batch').checked) runBatchBatched(pending); else runBatch(pending); };
 /* ---- 动图工坊 ---- */
@@ -123,7 +163,7 @@ $('run-gif').onclick = async () => { if (!state.gifFiles.length) return log('请
 /* ---- 高级命令 ---- */
 $('run-advanced').onclick = async () => { if (!state.files[0]) return log('高级命令需要至少一个输入文件。', true); const output = state.files[0].replace(/\.[^.\\/]+$/, '_processed.webm'); await run(['-y', '-i', state.files[0], ...$('custom-args').value.trim().split(/\s+/), output], '正在执行高级命令'); };
 /* ================= 媒体互转（动图 / 视频） ================= */
-$('media-add').onclick = async () => { const files = await window.ffmpeg.pickFiles(); if (!files.length) return; const r = filterFiles(files, 'media'); state.mediaFiles = [...new Set([...state.mediaFiles, ...r.kept])]; renderSimpleList(state.mediaFiles, 'media-list', 'media-count'); if (r.ignored.length) log(`已忽略 ${r.ignored.length} 个被勾选过滤的格式文件。`); else log(`已加入 ${r.kept.length} 个媒体文件。`); };
+$('media-add').onclick = async () => { const files = await window.ffmpeg.pickFiles(); if (!files.length) return; const adv = await applyAdvancedFilter(files, 'media'); let kept = adv.kept, advDropped = adv.dropped; if (!(advFilter.enabled && advFilter.targets.media)) { const r = filterFiles(files, 'media'); kept = r.kept; advDropped = r.ignored.length; } state.mediaFiles = [...new Set([...state.mediaFiles, ...kept])]; renderSimpleList(state.mediaFiles, 'media-list', 'media-count'); log(`已加入 ${kept.length} 个媒体文件${advDropped ? `（过滤掉 ${advDropped} 个）` : ''}。`); };
 $('media-clear').onclick = () => { state.mediaFiles = []; renderSimpleList([], 'media-list', 'media-count'); };
 function renderAnimQuality(fmt) { const wrap = $('media-anim-quality-wrap'); const p = state.media[fmt]; if (!wrap || !p) return;
   if (fmt === 'gif') { const pct = Math.round((p.colors - 2) / 254 * 100); wrap.innerHTML = `<label>图片专有参数：颜色数 <output id="media-anim-master-output">${p.colors} 色</output></label><input id="media-anim-master" type="range" min="2" max="256" value="${p.colors}"><div class="range-labels"><span>最低画质（2 色）</span><span>最高画质（256 色）</span></div><div class="quality-ticks">${[100, 75, 50, 25, 0].map((x) => { const c = Math.max(2, Math.round(2 + x / 100 * 254)); return `<span><i>${x}%</i><b>${c} 色</b></span>`; }).join('')}</div><label>对应质量百分比 <output id="media-anim-percent-output">${pct}%</output></label><div class="percent-track"><div class="percent-fill" style="width:${pct}%"></div></div><small class="policy-note">当前颜色数 = ${p.colors} 对应质量 ${pct}%（仅作展示：100% = 最高画质，0% = 最低画质）</small>`; $('media-anim-master').oninput = () => { p.colors = Number($('media-anim-master').value); renderAnimQuality(fmt); }; }
@@ -152,7 +192,7 @@ async function runMediaInner(_files) {
   const fmt = state.mediaFormat; const isAnim = ['gif', 'webp', 'apng'].includes(fmt);
   const batchEnabled = $('media-batch').checked; const batchSize = Math.max(1, Math.min(100, Number($('media-batch-size').value) || 3));
   let done = 0, failed = 0;
-  const convertOne = async (file) => { const out = file.replace(/\.[^.\\/]+$/, '') + `_${fmt}.${fmt}`; let args = ['-y', '-i', file]; try { if (isAnim) { const width = state.media[fmt].width.trim(); const fps = Number(state.media[fmt].fps || 15); let chain = []; if (width) chain.push(`scale=${width}:-2`); chain.push(`fps=${fps}`); if (fmt === 'gif') { const colors = state.media.gif.colors; const dither = $('media-gif-dither')?.value || state.media.gif.dither; args.push('-filter_complex', `]${chain.join(',')},split[a][b];[a]palettegen=max_colors=${colors}:stats_mode=diff[pal];[b][pal]paletteuse=dither=${dither}[v]`, '-map', '[v]', '-loop', state.media.gif.loop ? '0' : '1'); } else if (fmt === 'webp') { args.push('-vf', chain.join(','), '-c:v', 'libwebp_anim'); if (state.media.webp.lossless) args.push('-lossless', '1', '-q:v', '100'); else args.push('-lossless', '0', '-q:v', String(state.media.webp.quality)); args.push('-compression_level', String(state.media.webp.compression_level), '-loop', state.media.webp.loop ? '0' : '1'); } else { args.push('-vf', chain.join(','), '-c:v', 'apng', '-plays', '0', '-f', 'apng'); } } else { const v = state.media.video; args.push('-c:v', v.vcodec, '-crf', String(Math.max(0, v.crf))); if (v.preset) args.push('-preset', v.preset); let vfChain = []; if (v.width || v.height) vfChain.push(`scale=${v.width || -2}:${v.height || -2}`); if (v.fps) vfChain.push(`fps=${v.fps}`); if (vfChain.length) args.push('-vf', vfChain.join(',')); if (v.acodec === 'none') args.push('-an'); else if (fmt === 'webm') args.push('-c:a', 'libopus', '-b:a', v.abitrate || '128k'); else { args.push('-c:a', v.acodec); if (v.abitrate) args.push('-b:a', v.abitrate); } if (fmt === 'mp4') args.push('-movflags', '+faststart'); } args.push(out); const result = await run(args, `正在互转 ${name(file)} → ${fmt}`, {}); if (result.ok) { state.mediaStatus.set(file, 'done'); done += 1; log(`互转完成：${name(file)} → ${name(out)}`); } else { state.mediaStatus.set(file, 'failed'); failed += 1; } } catch (e) { state.mediaStatus.set(file, 'failed'); failed += 1; log(`互转失败：${e.message}`, true); } };
+  const convertOne = async (file) => { const out = file.replace(/\.[^.\\/]+$/, '') + `_${fmt}.${fmt}`; const hwaccel = $('hwaccel')?.value || ''; let args = ['-y']; if (hwaccel && !isAnim) args.push('-hwaccel', hwaccel); args.push('-i', file); try { if (isAnim) { const width = state.media[fmt].width.trim(); const fps = Number(state.media[fmt].fps || 15); let chain = []; if (width) chain.push(`scale=${width}:-2`); chain.push(`fps=${fps}`); if (fmt === 'gif') { const colors = state.media.gif.colors; const dither = $('media-gif-dither')?.value || state.media.gif.dither; args.push('-filter_complex', `]${chain.join(',')},split[a][b];[a]palettegen=max_colors=${colors}:stats_mode=diff[pal];[b][pal]paletteuse=dither=${dither}[v]`, '-map', '[v]', '-loop', state.media.gif.loop ? '0' : '1'); } else if (fmt === 'webp') { args.push('-vf', chain.join(','), '-c:v', 'libwebp_anim'); if (state.media.webp.lossless) args.push('-lossless', '1', '-q:v', '100'); else args.push('-lossless', '0', '-q:v', String(state.media.webp.quality)); args.push('-compression_level', String(state.media.webp.compression_level), '-loop', state.media.webp.loop ? '0' : '1'); } else { args.push('-vf', chain.join(','), '-c:v', 'apng', '-plays', '0', '-f', 'apng'); } } else { const v = state.media.video; const isGpuEncoder = /_nvenc$|_qsv$/.test(v.vcodec); args.push('-c:v', v.vcodec); if (isGpuEncoder) { args.push('-cq', String(Math.max(0, v.crf))); const pmap = { ultrafast: 'p1', superfast: 'p1', veryfast: 'p1', faster: 'p2', fast: 'p3', medium: 'p4', slow: 'p5', slower: 'p6', veryslow: 'p7' }; args.push('-preset', pmap[v.preset] || 'p4'); } else { args.push('-crf', String(Math.max(0, v.crf))); if (v.preset) args.push('-preset', v.preset); } let vfChain = []; if (v.width || v.height) vfChain.push(`scale=${v.width || -2}:${v.height || -2}`); if (v.fps) vfChain.push(`fps=${v.fps}`); if (vfChain.length) args.push('-vf', vfChain.join(',')); if (v.acodec === 'none') args.push('-an'); else if (fmt === 'webm') args.push('-c:a', 'libopus', '-b:a', v.abitrate || '128k'); else { args.push('-c:a', v.acodec); if (v.abitrate) args.push('-b:a', v.abitrate); } if (fmt === 'mp4') args.push('-movflags', '+faststart'); } args.push(out); const result = await run(args, `正在互转 ${name(file)} → ${fmt}`, {}); if (result.ok) { state.mediaStatus.set(file, 'done'); done += 1; log(`互转完成：${name(file)} → ${name(out)}`); } else { state.mediaStatus.set(file, 'failed'); failed += 1; } } catch (e) { state.mediaStatus.set(file, 'failed'); failed += 1; log(`互转失败：${e.message}`, true); } };
   if (batchEnabled) { for (let i = 0; i < files.length && state.mediaRunning; i += batchSize) { const batch = files.slice(i, i + batchSize); for (const file of batch) await convertOne(file); log(`分批互转：已完成 ${done + failed}/${files.length}`); await new Promise((r) => setTimeout(r, 20)); } } else { for (const file of files) { if (!state.mediaRunning) break; await convertOne(file); } }
   const stopped = !state.mediaRunning; state.mediaRunning = false;
   if (stopped) { state.mediaPartial = true; setRunPhase('media', 'paused'); log(`媒体互转已停止：已完成 ${done}/${files.length}，失败 ${failed}。可点「继续」或「重新开始」。`); } else { state.mediaPartial = false; setRunPhase('media', 'idle'); log(`媒体互转结束：成功 ${done}，失败 ${failed}。`); }
@@ -160,7 +200,7 @@ async function runMediaInner(_files) {
 $('run-media').onclick = () => { if (state.mediaRunning) { state.mediaRunning = false; state.mediaPartial = true; setRunPhase('media', 'paused'); return log('正在停止…当前批结束后停止。'); } if (!state.mediaFiles.length) return log('请先添加动图或视频文件。', true); state.mediaStatus = new Map(); state.mediaPartial = false; runMediaInner(); };
 $('resume-media').onclick = () => { const pending = state.mediaFiles.filter((f) => state.mediaStatus.get(f) !== 'done'); if (!pending.length) { state.mediaPartial = false; setRunPhase('media', 'idle'); return log('没有未完成的文件（全部已互转）。'); } state.mediaPartial = false; runMediaInner(pending); };
 /* ---- 音频转换 ---- */
-$('audio-add').onclick = async () => { const files = await window.ffmpeg.pickFiles(); if (!files.length) return; const r = filterFiles(files, 'audio'); state.audioFiles = [...new Set([...state.audioFiles, ...r.kept])]; renderSimpleList(state.audioFiles, 'audio-list', 'audio-count'); if (r.ignored.length) log(`已忽略 ${r.ignored.length} 个被勾选过滤的格式文件。`); else log(`已加入 ${r.kept.length} 个音频文件。`); };
+$('audio-add').onclick = async () => { const files = await window.ffmpeg.pickFiles(); if (!files.length) return; const adv = await applyAdvancedFilter(files, 'audio'); let kept = adv.kept, advDropped = adv.dropped; if (!(advFilter.enabled && advFilter.targets.audio)) { const r = filterFiles(files, 'audio'); kept = r.kept; advDropped = r.ignored.length; } state.audioFiles = [...new Set([...state.audioFiles, ...kept])]; renderSimpleList(state.audioFiles, 'audio-list', 'audio-count'); log(`已加入 ${kept.length} 个音频文件${advDropped ? `（过滤掉 ${advDropped} 个）` : ''}。`); };
 $('audio-clear').onclick = () => { state.audioFiles = []; renderSimpleList([], 'audio-list', 'audio-count'); };
 $('audio-container').onchange = () => { const map = { mp3: 'libmp3lame', m4a: 'aac', opus: 'libopus', ogg: 'libvorbis', flac: 'flac', wav: 'pcm_s16le' }; const sel = $('audio-acodec'); if (map[$('audio-container').value]) sel.value = map[$('audio-container').value]; };
 async function runAudioInner(_files) {
@@ -240,7 +280,7 @@ document.addEventListener('click', (event) => { const del = event.target.closest
 let repairPending = { file: '', ts: 0 };
 async function repairIntegrityFile(btn) { const file = btn.dataset.integrityRepair; if (btn.dataset.state !== 'confirm') { btn.dataset.state = 'confirm'; btn.textContent = '再次点击确认修复'; btn.classList.add('confirming'); repairPending = { file, ts: Date.now() }; log('「修复」会在原文件旁生成修复副本，绝不自动改动原文件；再次点击确认后开始。'); setTimeout(() => { if (repairPending.file === file && Date.now() - repairPending.ts > 6000) { btn.dataset.state = ''; btn.textContent = '修复'; btn.classList.remove('confirming'); } }, 6500); return; } if (repairPending.file !== file) return; btn.dataset.state = 'busy'; btn.textContent = '修复中…'; btn.disabled = true; btn.classList.remove('confirming'); const result = await window.ffmpeg.repairFile({ file }); btn.disabled = false; if (result.ok) { const stageNote = result.stage === 'remux' ? '（重封装修复）' : '（重编码修复）'; btn.textContent = '已修复'; btn.classList.add('repaired'); btn.dataset.state = ''; log(`修复成功${stageNote}：已生成副本 ${name(result.repaired)}。原文件未改动，请打开副本核对无误后自行决定是否替换原文件。`); } else { btn.textContent = '修复'; btn.classList.remove('confirming'); btn.dataset.state = ''; log(`修复失败：${name(file)}（${result.error}）`, true); } }
 async function deleteIntegrityFile(file) { const result = await window.ffmpeg.deleteFile(file); if (!result.ok) { log(`删除失败：${name(file)}（${result.error}）`, true); return; } integrity.files = integrity.files.filter((f) => f !== file); integrity.results.delete(file); renderIntegrityList(); log(`已删除：${name(file)}`); }
-$('integrity-add').onclick = async () => { const paths = await window.ffmpeg.pickAny(); if (!paths.length) return; for (const p of paths) { const kind = await window.ffmpeg.pathKind(p); if (kind === 'directory') integrity.files = integrity.files.concat(await window.ffmpeg.listAllFiles(p)); else if (kind === 'file') integrity.files.push(p); } integrity.files = [...new Set(integrity.files)]; renderIntegrityList(); log(`已加入 ${integrity.files.length} 个文件（文件夹会递归扫描）。`); };
+$('integrity-add').onclick = async () => { const paths = await window.ffmpeg.pickAny(); if (!paths.length) return; let collected = []; for (const p of paths) { const kind = await window.ffmpeg.pathKind(p); if (kind === 'directory') collected = collected.concat(await window.ffmpeg.listAllFiles(p)); else if (kind === 'file') collected.push(p); } collected = [...new Set(collected)]; const adv = await applyAdvancedFilter(collected, 'integrity'); integrity.files = [...new Set([...integrity.files, ...adv.kept])]; renderIntegrityList(); log(`已加入 ${adv.kept.length} 个文件（文件夹会递归扫描）${adv.dropped ? `；高级过滤丢弃 ${adv.dropped} 个` : ''}。`); };
 $('integrity-clear').onclick = () => { integrity.files = []; integrity.results.clear(); renderIntegrityList(); };
 $('integrity-mode-quick').onclick = () => { integrity.mode = 'quick'; $('integrity-mode-quick').classList.add('selected'); $('integrity-mode-full').classList.remove('selected'); };
 $('integrity-mode-full').onclick = () => { integrity.mode = 'full'; $('integrity-mode-full').classList.add('selected'); $('integrity-mode-quick').classList.remove('selected'); };
@@ -267,7 +307,7 @@ const runIntegrity = async (resume = false) => {
 };
 $('integrity-run').onclick = () => runIntegrity(false);
 $('resume-integrity').onclick = () => runIntegrity(true);
-const integrityDrop = $('integrity-list'); integrityDrop.ondragover = (e) => { e.preventDefault(); e.stopPropagation(); integrityDrop.classList.add('over'); }; integrityDrop.ondragleave = () => integrityDrop.classList.remove('over'); integrityDrop.ondrop = async (e) => { e.preventDefault(); e.stopPropagation(); integrityDrop.classList.remove('over'); const paths = droppedPaths(e); for (const p of paths) { const kind = await window.ffmpeg.pathKind(p); if (kind === 'directory') integrity.files = integrity.files.concat(await window.ffmpeg.listAllFiles(p)); else if (kind === 'file') integrity.files.push(p); } integrity.files = [...new Set(integrity.files)]; renderIntegrityList(); log(`已加入 ${integrity.files.length} 个文件。`); };
+const integrityDrop = $('integrity-list'); integrityDrop.ondragover = (e) => { e.preventDefault(); e.stopPropagation(); integrityDrop.classList.add('over'); }; integrityDrop.ondragleave = () => integrityDrop.classList.remove('over'); integrityDrop.ondrop = async (e) => { e.preventDefault(); e.stopPropagation(); integrityDrop.classList.remove('over'); const paths = droppedPaths(e); let collected = []; for (const p of paths) { const kind = await window.ffmpeg.pathKind(p); if (kind === 'directory') collected = collected.concat(await window.ffmpeg.listAllFiles(p)); else if (kind === 'file') collected.push(p); } collected = [...new Set(collected)]; const adv = await applyAdvancedFilter(collected, 'integrity'); integrity.files = [...new Set([...integrity.files, ...adv.kept])]; renderIntegrityList(); log(`已加入 ${adv.kept.length} 个文件${adv.dropped ? `；高级过滤丢弃 ${adv.dropped} 个` : ''}。`); };
 renderFilterBars();
 
 /* ---- 文件夹流式批处理（流式枚举，不预先扫描全部） ---- */
@@ -310,17 +350,57 @@ function updateFbUI() {
     }
   }
 }
-async function startFbStream() {
+async function startFbStream(allowedExts) {
   if (!folderBatch.folders.length) return fbLog('请先添加文件夹。');
   await window.ffmpeg.streamReset();
-  await window.ffmpeg.streamStart({ folders: folderBatch.folders, recursive: folderBatch.recursive, ignoreExts: [...folderBatch.ignored] });
+  await window.ffmpeg.streamStart({ folders: folderBatch.folders, recursive: folderBatch.recursive, ignoreExts: [...folderBatch.ignored], allowedExts: allowedExts || null });
   folderBatch.streaming = true;
   folderBatch.done = false;
   folderBatch.totalScanned = 0;
   folderBatch.batchCount = 0;
   folderBatch.currentBatch = [];
-  fbLog('流式枚举已启动，共 ' + folderBatch.folders.length + ' 个文件夹。点「获取下一批预览」或在功能视图点导入。');
+  folderBatch.currentAllow = allowedExts || null;
+  const allowDesc = allowedExts ? `（仅收录 ${allowedExts.length} 种目标格式）` : '（收录全部格式）';
+  fbLog('流式枚举已启动，共 ' + folderBatch.folders.length + ' 个文件夹' + allowDesc + '。点「获取下一批预览」或在功能视图点导入。');
   updateFbUI();
+}
+// feature → 白名单扩展名集合；integrity 为 null 表示收全部
+const FB_FEATURE_ALLOW = {
+  convert: FILTER_GROUPS.image,
+  media: FILTER_GROUPS.media,
+  audio: FILTER_GROUPS.audio,
+  integrity: null
+};
+// 当高级过滤启用且该 feature 被勾选时，放弃白名单（main 进程收全部，renderer 端二次过滤）
+function effectiveAllowForFeature(feature) {
+  if (advFilter.enabled && advFilter.targets[feature]) {
+    // 枚举时过滤开启：把 advFilter 的 include exts 作为白名单传给 stream-next
+    if ($('fb-filter-at-scan')?.checked) {
+      const inc = parseExtList(advFilter.includeExts);
+      if (inc.length) return inc;
+    }
+    return null;
+  }
+  return FB_FEATURE_ALLOW[feature];
+}
+// 确保当前流式枚举的白名单与目标 feature 一致；不一致则重启枚举
+async function ensureFbStreamForFeature(feature) {
+  const want = effectiveAllowForFeature(feature);
+  const cur = folderBatch.currentAllow || null;
+  const same = (want === null && cur === null) || (Array.isArray(want) && Array.isArray(cur) && want.length === cur.length && want.every((e) => cur.includes(e)));
+  if (folderBatch.streaming && !folderBatch.done && same) return;
+  await startFbStream(want);
+}
+// 双保险：即便 main 进程漏过，渲染进程再按扩展名白名单过滤一次
+function filterByAllowed(files, allowed) {
+  if (!allowed) return { kept: files, dropped: 0 };
+  const set = new Set(allowed.map((e) => e.toLowerCase()));
+  const kept = [], dropped = [];
+  for (const f of files) {
+    const extName = (f.split(/[\\/]/).pop().split('.').pop() || '').toLowerCase();
+    (set.has(extName) ? kept : dropped).push(f);
+  }
+  return { kept, dropped };
 }
 function resetFbStream() {
   window.ffmpeg.streamReset();
@@ -329,6 +409,7 @@ function resetFbStream() {
   folderBatch.totalScanned = 0;
   folderBatch.batchCount = 0;
   folderBatch.currentBatch = [];
+  folderBatch.currentAllow = null;
   fbLog('已重置流式枚举，下次启动从头开始。');
   updateFbUI();
 }
@@ -347,14 +428,25 @@ async function fetchFbBatch(forPreview) {
   return result.files;
 }
 async function importFbToFeature(feature) {
-  const batch = await fetchFbBatch(false);
-  if (!batch.length) return;
+  await ensureFbStreamForFeature(feature);
+  const rawBatch = await fetchFbBatch(false);
+  let batch, dropped;
+  if (advFilter.enabled && advFilter.targets[feature]) {
+    const adv = await applyAdvancedFilter(rawBatch, feature);
+    batch = adv.kept; dropped = adv.dropped;
+  } else {
+    const allowed = FB_FEATURE_ALLOW[feature];
+    const r = filterByAllowed(rawBatch, allowed);
+    batch = r.kept; dropped = r.dropped;
+  }
+  if (!batch.length) { if (rawBatch.length) fbLog('本批 ' + rawBatch.length + ' 个文件全部被过滤规则丢弃。'); return; }
+  if (dropped) fbLog('已导入 ' + batch.length + ' 个文件，过滤掉 ' + dropped + ' 个非目标文件。');
   const labels = { convert: '图片转换', media: '媒体互转', audio: '音频转换', integrity: '完整性检查' };
   if (feature === 'convert') { state.files = [...batch]; state.meta = new Map(); renderFiles(state.files, 'file-list', 'file-count'); }
   else if (feature === 'media') { state.mediaFiles = [...batch]; renderSimpleList(state.mediaFiles, 'media-list', 'media-count'); }
   else if (feature === 'audio') { state.audioFiles = [...batch]; renderSimpleList(state.audioFiles, 'audio-list', 'audio-count'); }
   else if (feature === 'integrity') { integrity.files = [...batch]; integrity.results = new Map(); renderIntegrityList(); }
-  log('已从文件夹批处理导入 ' + batch.length + ' 个文件到' + labels[feature] + '（第 ' + folderBatch.batchCount + ' 批，累计已扫描 ' + folderBatch.totalScanned + '）。');
+  log('已从文件夹批处理导入 ' + batch.length + ' 个文件到' + labels[feature] + '（第 ' + folderBatch.batchCount + ' 批，累计已扫描 ' + folderBatch.totalScanned + '）。' + (dropped ? '已过滤 ' + dropped + ' 个非目标文件。' : ''));
   fbLog('已导入 ' + batch.length + ' 个文件到' + labels[feature] + '。下次导入自动获取下一批。');
 }
 // 事件绑定
@@ -370,7 +462,8 @@ $('fb-choose-folder').onclick = async () => {
   else fbLog('选择的内容中没有新的文件夹。');
 };
 $('fb-recursive').onchange = (e) => { folderBatch.recursive = e.target.checked; };
-$('fb-batch-size').onchange = (e) => { folderBatch.batchSize = Number(e.target.value); updateFbUI(); };
+$('fb-batch-size-preset').onchange = (e) => { const v = e.target.value; const custom = v === 'custom'; $('fb-batch-size').style.display = custom ? '' : 'none'; $('fb-batch-size').disabled = !custom; if (!custom) { folderBatch.batchSize = Number(v); updateFbUI(); } };
+$('fb-batch-size').onchange = (e) => { folderBatch.batchSize = Math.max(1, Number(e.target.value) || 100); updateFbUI(); };
 $('fb-start-stream').onclick = () => startFbStream();
 $('fb-reset-stream').onclick = () => resetFbStream();
 $('fb-fetch-batch').onclick = () => fetchFbBatch(true);
@@ -397,25 +490,41 @@ function updateAutoImportButtons(feature, running) {
 async function startAutoImport(feature) {
   if (autoImport.running) return log('已有持续自动导入处理正在运行，请先停止。', true);
   if (!folderBatch.folders.length) return log('请先在「文件夹批处理」中添加文件夹。', true);
+  await ensureFbStreamForFeature(feature);
   autoImport.running = true; autoImport.feature = feature; autoImport.stopRequested = false;
   const labels = { convert: '图片转换', media: '媒体互转', audio: '音频转换', integrity: '完整性检查' };
   updateAutoImportButtons(feature, true);
   log('持续自动导入处理已启动：' + labels[feature] + '，每批 ' + folderBatch.batchSize + ' 个文件。');
-  let batchNum = 0;
+  let batchNum = 0, droppedTotal = 0;
   while (!autoImport.stopRequested) {
     batchNum++;
-    const batch = await fetchFbBatch(false);
-    if (!batch.length) { log('持续自动导入处理完成：共处理 ' + (batchNum - 1) + ' 批，全部文件已处理完毕。'); break; }
-    log('持续自动导入：第 ' + batchNum + ' 批，' + batch.length + ' 个文件。');
+    const rawBatch = await fetchFbBatch(false);
+    let batch, dropped;
+    if (advFilter.enabled && advFilter.targets[feature]) {
+      const adv = await applyAdvancedFilter(rawBatch, feature);
+      batch = adv.kept; dropped = adv.dropped;
+    } else {
+      const allowed = FB_FEATURE_ALLOW[feature];
+      const r = filterByAllowed(rawBatch, allowed);
+      batch = r.kept; dropped = r.dropped;
+    }
+    droppedTotal += dropped;
+    if (!batch.length) {
+      if (!rawBatch.length) { log('持续自动导入：所有文件已枚举并处理完毕，结束。'); break; }
+      log('本批 ' + rawBatch.length + ' 个文件全部被过滤规则丢弃，自动取下一批。'); continue;
+    }
+    if (dropped) log('持续自动导入：第 ' + batchNum + ' 批，' + batch.length + ' 个文件（已过滤 ' + dropped + ' 个）。');
+    else log('持续自动导入：第 ' + batchNum + ' 批，' + batch.length + ' 个文件。');
     if (feature === 'convert') { state.files = [...batch]; state.meta = new Map(); renderFiles(state.files, 'file-list', 'file-count'); }
     else if (feature === 'media') { state.mediaFiles = [...batch]; renderSimpleList(state.mediaFiles, 'media-list', 'media-count'); }
     else if (feature === 'audio') { state.audioFiles = [...batch]; renderSimpleList(state.audioFiles, 'audio-list', 'audio-count'); }
     else if (feature === 'integrity') { integrity.files = [...batch]; integrity.results = new Map(); renderIntegrityList(); }
     startFeatureProcessing(feature);
     await waitForFeatureComplete(feature);
-    if (autoImport.stopRequested) { log('持续自动导入处理已停止：共处理 ' + batchNum + ' 批。'); break; }
+    if (autoImport.stopRequested) { log('持续自动导入处理已停止：共处理 ' + batchNum + ' 批' + (droppedTotal ? '，累计过滤 ' + droppedTotal + ' 个非目标格式文件' : '') + '。'); break; }
     await new Promise((r) => setTimeout(r, 200));
   }
+  if (!autoImport.stopRequested) log('持续自动导入处理完成：共处理 ' + (batchNum - 1) + ' 批' + (droppedTotal ? '，累计过滤 ' + droppedTotal + ' 个非目标格式文件' : '') + '。');
   autoImport.running = false;
   updateAutoImportButtons(feature, false);
 }
@@ -464,9 +573,12 @@ $('settings-clear-ffmpeg').onclick = async () => { $('settings-path-input').valu
 $('settings-save-now').onclick = async () => { const candidate = $('settings-path-input').value.trim(); if (!candidate) return log('当前没有可保存的路径。', true); $('settings-validate-ffmpeg').click(); };
 $('settings-reset-engine').onclick = async () => { const result = await window.ffmpeg.clearFfmpegPath(); $('settings-path-input').value = ''; fillPathSelect(result.history, ''); $('settings-engine-validation').textContent = '已恢复默认'; $('settings-engine-validation').classList.remove('valid-pill'); const cfg = await window.ffmpeg.getConfig(); $('engine-path').textContent = cfg.ffmpeg; $('engine-status').textContent = cfg.exists ? 'FFmpeg 引擎在线' : '未找到 FFmpeg'; $('engine-status').previousElementSibling.classList.toggle('ok', cfg.exists); log(`已恢复默认引擎路径：${cfg.ffmpeg}`); };
 /* ---- 配置：收集 / 应用 / 保存 / 恢复 ---- */
-function collectConvertProfile() { const cfg = { convert: { format: state.format, webp: { ...state.fmtParams.webp }, png: { ...state.fmtParams.png }, jpg: { ...state.fmtParams.jpg }, avif: { ...state.fmtParams.avif }, gif: { ...state.fmtParams.gif }, bmp: { ...state.fmtParams.bmp }, tiff: { ...state.fmtParams.tiff }, jpegxl: { ...state.fmtParams.jpegxl }, width: $('width').value, height: $('height').value, keepRatio: $('keep-ratio').checked, sizeGate: $('size-gate').checked, sizeTarget: Number($('size-target').value), deleteOriginal: $('delete-original').checked, filenameMode: $('filename-mode').value, filenameTemplate: $('filename-template').value, threads: $('threads')?.value || '0', hwaccel: $('hwaccel')?.value || '', customCores: Number($('custom-cores')?.value || 2) }, media: { outFormat: state.mediaFormat, gifOut: { ...state.media.gif }, webpOut: { ...state.media.webp }, apngOut: { ...state.media.apng }, videoOut: { ...state.media.video } }, gifStudio: { format: document.querySelector('[data-gif-format].selected')?.dataset.gifFormat || 'gif', fps: $('fps').value, width: $('gif-width').value, loop: $('loop').checked }, video: { container: 'mp4', vcodec: 'libx264', vcrf: '23', vbitrate: '', width: '', height: '', preset: 'medium', acodec: 'aac', abitrate: '128k' }, audio: { container: $('audio-container').value, acodec: $('audio-acodec').value, abitrate: $('audio-bitrate').value, samplerate: $('audio-samplerate').value } }; return cfg; }
+function collectConvertProfile() { const cfg = { convert: { format: state.format, webp: { ...state.fmtParams.webp }, png: { ...state.fmtParams.png }, jpg: { ...state.fmtParams.jpg }, avif: { ...state.fmtParams.avif }, gif: { ...state.fmtParams.gif }, bmp: { ...state.fmtParams.bmp }, tiff: { ...state.fmtParams.tiff }, jpegxl: { ...state.fmtParams.jpegxl }, width: $('width').value, height: $('height').value, keepRatio: $('keep-ratio').checked, sizeGate: $('size-gate').checked, sizeTarget: Number($('size-target').value), deleteOriginal: $('delete-original').checked, filenameMode: $('filename-mode').value, filenameTemplate: $('filename-template').value, threads: $('threads')?.value || '0', hwaccel: $('hwaccel')?.value || '', customCores: Number($('custom-cores')?.value || 2) }, media: { outFormat: state.mediaFormat, gifOut: { ...state.media.gif }, webpOut: { ...state.media.webp }, apngOut: { ...state.media.apng }, videoOut: { ...state.media.video } }, gifStudio: { format: document.querySelector('[data-gif-format].selected')?.dataset.gifFormat || 'gif', fps: $('fps').value, width: $('gif-width').value, loop: $('loop').checked }, video: { container: 'mp4', vcodec: 'libx264', vcrf: '23', vbitrate: '', width: '', height: '', preset: 'medium', acodec: 'aac', abitrate: '128k' }, audio: { container: $('audio-container').value, acodec: $('audio-acodec').value, abitrate: $('audio-bitrate').value, samplerate: $('audio-samplerate').value }, advFilter: JSON.parse(JSON.stringify(advFilter)) }; return cfg; }
 function saveConvertProfile(silent = true) { const cfg = collectConvertProfile(); window.ffmpeg.saveSettings(cfg).then(() => { state.savedSettings = cfg; if (!silent) log('已保存当前设置，下次启动自动套用。'); }); }
-function applyConvertProfile(cfg) { if (!cfg) cfg = {}; const c = cfg.convert || {}; if (c.format && FORMAT_CONFIG[c.format]) { state.format = c.format; document.querySelectorAll('#format-grid button').forEach((b) => b.classList.toggle('selected', b.dataset.format === c.format)); } initFmtParams(); ['webp', 'png', 'jpg', 'avif', 'gif', 'bmp', 'tiff', 'jpegxl'].forEach((f) => { if (c[f] && state.fmtParams[f]) state.fmtParams[f] = { ...state.fmtParams[f], ...c[f] }; }); setVal('width', c.width); setVal('height', c.height); setChk('keep-ratio', c.keepRatio); setChk('size-gate', c.sizeGate); if (c.sizeTarget !== undefined) { $('size-target').value = c.sizeTarget; $('size-target-output').textContent = `${c.sizeTarget}%`; $('size-limit-label').textContent = `${100 - c.sizeTarget}%`; } setChk('delete-original', c.deleteOriginal); setSel('filename-mode', c.filenameMode); if (c.filenameMode === 'custom') $('filename-template').disabled = false; setVal('filename-template', c.filenameTemplate || '{name}'); if (c.threads) { const t = $('threads'); if (t) t.value = c.threads; const cc = $('custom-cores'); if (cc && c.customCores) cc.value = c.customCores; } if (c.hwaccel) { const h = $('hwaccel'); if (h) h.value = c.hwaccel; } const m = cfg.media || {}; if (m.outFormat && ['gif', 'webp', 'apng', 'mp4', 'webm', 'mkv', 'mov', 'avi'].includes(m.outFormat)) state.mediaFormat = m.outFormat; if (m.gifOut) state.media.gif = { ...state.media.gif, ...m.gifOut }; if (m.webpOut) state.media.webp = { ...state.media.webp, ...m.webpOut }; if (m.apngOut) state.media.apng = { ...state.media.apng, ...m.apngOut }; if (m.videoOut) state.media.video = { ...state.media.video, ...m.videoOut }; renderMediaState(); const gs = cfg.gifStudio || {}; if (gs.format) document.querySelectorAll('[data-gif-format]').forEach((b) => b.classList.toggle('selected', b.dataset.gifFormat === gs.format)); setVal('fps', gs.fps); setOut('fps-output', gs.fps); setVal('gif-width', gs.width); setChk('loop', gs.loop); const a = cfg.audio || {}; setSel('audio-container', a.container); setSel('audio-acodec', a.acodec); setVal('audio-bitrate', a.abitrate); setSel('audio-samplerate', a.samplerate); renderFormatSettings(state.format); }
+function applyConvertProfile(cfg) { if (!cfg) cfg = {}; const c = cfg.convert || {};
+  // 高级过滤恢复
+  if (cfg.advFilter) { try { Object.assign(advFilter, JSON.parse(JSON.stringify(cfg.advFilter))); if (cfg.advFilter.targets) advFilter.targets = { ...ADVF_DEFAULTS.targets, ...cfg.advFilter.targets }; } catch {} advfApplyToUI(); }
+  if (c.format && FORMAT_CONFIG[c.format]) { state.format = c.format; document.querySelectorAll('#format-grid button').forEach((b) => b.classList.toggle('selected', b.dataset.format === c.format)); } initFmtParams(); ['webp', 'png', 'jpg', 'avif', 'gif', 'bmp', 'tiff', 'jpegxl'].forEach((f) => { if (c[f] && state.fmtParams[f]) state.fmtParams[f] = { ...state.fmtParams[f], ...c[f] }; }); setVal('width', c.width); setVal('height', c.height); setChk('keep-ratio', c.keepRatio); setChk('size-gate', c.sizeGate); if (c.sizeTarget !== undefined) { $('size-target').value = c.sizeTarget; $('size-target-output').textContent = `${c.sizeTarget}%`; $('size-limit-label').textContent = `${100 - c.sizeTarget}%`; } setChk('delete-original', c.deleteOriginal); setSel('filename-mode', c.filenameMode); if (c.filenameMode === 'custom') $('filename-template').disabled = false; setVal('filename-template', c.filenameTemplate || '{name}'); if (c.threads) { const t = $('threads'); if (t) t.value = c.threads; const cc = $('custom-cores'); if (cc && c.customCores) cc.value = c.customCores; const dc = document.getElementById('dynamic-config'); if (dc) dc.style.display = t && t.value === 'dynamic' ? 'grid' : 'none'; } if (c.hwaccel) { const h = $('hwaccel'); if (h) h.value = c.hwaccel; } const m = cfg.media || {}; if (m.outFormat && ['gif', 'webp', 'apng', 'mp4', 'webm', 'mkv', 'mov', 'avi'].includes(m.outFormat)) state.mediaFormat = m.outFormat; if (m.gifOut) state.media.gif = { ...state.media.gif, ...m.gifOut }; if (m.webpOut) state.media.webp = { ...state.media.webp, ...m.webpOut }; if (m.apngOut) state.media.apng = { ...state.media.apng, ...m.apngOut }; if (m.videoOut) state.media.video = { ...state.media.video, ...m.videoOut }; renderMediaState(); const gs = cfg.gifStudio || {}; if (gs.format) document.querySelectorAll('[data-gif-format]').forEach((b) => b.classList.toggle('selected', b.dataset.gifFormat === gs.format)); setVal('fps', gs.fps); setOut('fps-output', gs.fps); setVal('gif-width', gs.width); setChk('loop', gs.loop); const a = cfg.audio || {}; setSel('audio-container', a.container); setSel('audio-acodec', a.acodec); setVal('audio-bitrate', a.abitrate); setSel('audio-samplerate', a.samplerate); renderFormatSettings(state.format); }
 function renderMediaState() { const fmt = state.mediaFormat; const isAnim = ['gif', 'webp', 'apng'].includes(fmt); document.querySelectorAll('#media-format-grid button').forEach((b) => b.classList.toggle('selected', b.dataset.mediaFormat === fmt)); if (isAnim) { $('media-anim-settings').classList.remove('hidden-setting'); $('media-video-settings').classList.add('hidden-setting'); renderMediaAnimExtra(); $('media-fps').value = state.media[fmt].fps || 15; $('media-fps-output').textContent = state.media[fmt].fps || 15; $('media-width').value = state.media[fmt].width || ''; $('media-loop').checked = state.media[fmt].loop !== false; } else { $('media-anim-settings').classList.add('hidden-setting'); $('media-video-settings').classList.remove('hidden-setting'); const v = state.media.video; $('media-vcodec').value = v.vcodec; $('media-preset').value = v.preset; $('media-preset-output').textContent = v.preset; renderVideoCrf(); $('media-vfps').value = v.fps || ''; $('media-vwidth').value = v.width || ''; $('media-vheight').value = v.height || ''; $('media-acodec').value = v.acodec; $('media-abitrate').value = v.abitrate || ''; } }
 function setVal(id, value) { const el = $(id); if (el && value !== undefined && value !== null && value !== '') el.value = value; }
 function setOut(id, value) { const el = $(id); if (el && value !== undefined) el.textContent = value; }
@@ -477,8 +589,120 @@ $('save-defaults').onclick = () => saveConvertProfile(false);
 $('reset-defaults').onclick = resetAllToDefault;
 $('settings-save-all').onclick = () => saveConvertProfile(false);
 $('settings-reset-all').onclick = resetAllToDefault;
+/* ---- 高级过滤（Duplicate Cleaner 风格，启用时覆盖其他所有过滤规则） ---- */
+const ADVF_DEFAULTS = {
+  enabled: false,
+  targets: { convert: true, media: true, audio: false, integrity: true, folderBatch: true },
+  includeExts: '',
+  excludeExts: '',
+  minSize: 0, minUnit: 1024,
+  maxSize: 0, maxUnit: 1024,
+  ignoreZero: true,
+  excludeFolders: ''
+};
+const advFilter = { ...ADVF_DEFAULTS, targets: { ...ADVF_DEFAULTS.targets } };
+function parseExtList(str) {
+  return String(str || '').split(/[;,\n]+/).map((s) => s.trim().toLowerCase().replace(/^\*\.?/, '').replace(/^\./, '')).filter(Boolean);
+}
+// 同步部分：扩展名 + 文件夹名（无需 IO）
+function advExtFolderFilter(files) {
+  const include = parseExtList(advFilter.includeExts);
+  const exclude = parseExtList(advFilter.excludeExts);
+  const exFolders = String(advFilter.excludeFolders || '').split(/[;,\n]+/).map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const kept = [], dropped = [];
+  for (const f of files) {
+    const low = f.toLowerCase();
+    const extName = low.includes('.') ? low.split('.').pop() : '';
+    if (exFolders.some((d) => low.includes('\\' + d + '\\') || low.endsWith('\\' + d) || low.includes('/' + d + '/') || low.endsWith('/' + d))) { dropped.push(f); continue; }
+    if (include.length && !include.includes(extName)) { dropped.push(f); continue; }
+    if (exclude.length && exclude.includes(extName)) { dropped.push(f); continue; }
+    kept.push(f);
+  }
+  return { kept, dropped };
+}
+// 异步部分：文件大小 + 0 字节
+async function advSizeFilter(files) {
+  const minB = advFilter.minSize > 0 ? advFilter.minSize * advFilter.minUnit : 0;
+  const maxB = advFilter.maxSize > 0 ? advFilter.maxSize * advFilter.maxUnit : Infinity;
+  const kept = [], dropped = [];
+  for (const f of files) {
+    const sz = await window.ffmpeg.fileSize(f);
+    if (sz === 0 && advFilter.ignoreZero) { dropped.push(f); continue; }
+    if (sz >= 0 && (sz < minB || sz > maxB)) { dropped.push(f); continue; }
+    kept.push(f);
+  }
+  return { kept, dropped };
+}
+// 统一入口：返回 { kept, dropped }。未启用或目标未勾选时原样返回
+async function applyAdvancedFilter(files, targetKey) {
+  if (!advFilter.enabled || !advFilter.targets[targetKey]) return { kept: files, dropped: 0 };
+  const r1 = advExtFolderFilter(files);
+  const r2 = await advSizeFilter(r1.kept);
+  return { kept: r2.kept, dropped: r1.dropped + r2.dropped };
+}
+// UI 绑定
+function advfCollect() {
+  advFilter.enabled = $('advf-enabled').checked;
+  advFilter.targets.convert = $('advf-target-convert').checked;
+  advFilter.targets.media = $('advf-target-media').checked;
+  advFilter.targets.audio = $('advf-target-audio').checked;
+  advFilter.targets.integrity = $('advf-target-integrity').checked;
+  advFilter.targets.folderBatch = $('advf-target-folder').checked;
+  advFilter.includeExts = $('advf-include').value;
+  advFilter.excludeExts = $('advf-exclude').value;
+  advFilter.minSize = Number($('advf-min-size').value) || 0;
+  advFilter.minUnit = Number($('advf-min-unit').value) || 1024;
+  advFilter.maxSize = Number($('advf-max-size').value) || 0;
+  advFilter.maxUnit = Number($('advf-max-unit').value) || 1024;
+  advFilter.ignoreZero = $('advf-ignore-zero').checked;
+  advFilter.excludeFolders = $('advf-exclude-folders').value;
+  const pill = $('advf-status');
+  if (pill) pill.textContent = advFilter.enabled ? '已启用（覆盖其他过滤）' : '未启用';
+}
+function advfApplyToUI() {
+  $('advf-enabled').checked = !!advFilter.enabled;
+  $('advf-target-convert').checked = advFilter.targets.convert !== false;
+  $('advf-target-media').checked = advFilter.targets.media !== false;
+  $('advf-target-audio').checked = !!advFilter.targets.audio;
+  $('advf-target-integrity').checked = advFilter.targets.integrity !== false;
+  $('advf-target-folder').checked = advFilter.targets.folderBatch !== false;
+  $('advf-include').value = advFilter.includeExts || '';
+  $('advf-exclude').value = advFilter.excludeExts || '';
+  $('advf-min-size').value = advFilter.minSize || '';
+  $('advf-min-unit').value = String(advFilter.minUnit || 1024);
+  $('advf-max-size').value = advFilter.maxSize || '';
+  $('advf-max-unit').value = String(advFilter.maxUnit || 1024);
+  $('advf-ignore-zero').checked = advFilter.ignoreZero !== false;
+  $('advf-exclude-folders').value = advFilter.excludeFolders || '';
+  const pill = $('advf-status');
+  if (pill) pill.textContent = advFilter.enabled ? '已启用（覆盖其他过滤）' : '未启用';
+}
+['advf-enabled','advf-target-convert','advf-target-media','advf-target-audio','advf-target-integrity','advf-target-folder'].forEach((id) => { const el = $(id); if (el) el.onchange = advfCollect; });
+['advf-include','advf-exclude','advf-min-size','advf-max-size','advf-exclude-folders'].forEach((id) => { const el = $(id); if (el) el.oninput = advfCollect; });
+['advf-min-unit','advf-max-unit','advf-ignore-zero'].forEach((id) => { const el = $(id); if (el) el.onchange = advfCollect; });
+$('advf-save').onclick = () => { advfCollect(); saveConvertProfile(); log('高级过滤设置已保存。'); };
+$('advf-reset').onclick = () => { Object.assign(advFilter, JSON.parse(JSON.stringify(ADVF_DEFAULTS))); advfApplyToUI(); saveConvertProfile(); log('高级过滤已恢复默认（未启用）。'); };
+
 /* ---- 进度 / 日志 ---- */
 if (window.ffmpeg) { window.ffmpeg.onLog((text) => { $('log').textContent = text.trim().split(/\r?\n/).pop() || '正在处理…'; }); window.ffmpeg.onProgress((progress) => { const file = state.activeJobs.get(progress.jobId) || progress.file; if (!file) return; const info = state.meta.get(file); if (!info) return; info.progress = progress.percent || 0; renderFiles(state.files, 'file-list', 'file-count'); }); }
+
+/* ---- 全局停止按钮 ---- */
+function gentleStop() {
+  state.batchRunning = false; state.mediaRunning = false; state.audioRunning = false;
+  if (typeof integrity !== 'undefined' && integrity.checking) integrity.checking = false;
+  if (folderBatch.streaming) folderBatch.streaming = false;
+  if (typeof autoImport !== 'undefined') autoImport.stopRequested = true;
+  log('⏸ 温和停止：不再启动新任务，已启动的进程跑完后停止。', true);
+}
+function hardStop() {
+  gentleStop();
+  window.ffmpeg.killAllFfmpeg().then(() => log('⏹ 强制停止：已杀掉所有 ffmpeg 进程。', true));
+}
+document.addEventListener('DOMContentLoaded', () => {
+  $('gentle-stop').onclick = gentleStop;
+  $('hard-stop').onclick = hardStop;
+  $('about-btn').onclick = () => alert('FFmpeg Convert\n\n基于 FFmpeg 的本地媒体转换工具\n• 图片/动图/视频/音频格式互转\n• 批量转换，动态并发调度\n• 完整性检查，损坏文件修复\n\n所有处理均在本地完成，不上传任何数据。');
+});
 /* ---- 初始化（带安全兜底：确保质量控制面板始终渲染） ---- */
 function safeInitDefaults() { if (!state.fmtParams || Object.keys(state.fmtParams).length === 0) initFmtParams(); if (state.format && FORMAT_CONFIG[state.format]) renderFormatSettings(state.format); }
 try {
